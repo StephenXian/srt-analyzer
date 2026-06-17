@@ -352,6 +352,251 @@
     font-weight: 600;
   }
 
+  /* ===== 文件历史列表 ===== */
+  .file-history-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .file-history-card:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--accent);
+  }
+  .file-history-card .file-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+  }
+  .file-history-card .file-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .file-history-card .file-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .file-history-card .file-meta {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+  .file-history-card .file-delete {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    transition: all 0.15s;
+    font-size: 14px;
+  }
+  .file-history-card .file-delete:hover {
+    background: rgba(239,68,68,0.1);
+    color: #ef4444;
+  }
+
+  /* ===== 文件下拉选择 ===== */
+  .file-selector {
+    position: relative;
+    display: inline-block;
+  }
+  .file-selector-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    cursor: pointer;
+    border: 1px solid var(--border);
+    transition: all 0.15s;
+    max-width: 200px;
+  }
+  .file-selector-btn:hover {
+    background: var(--bg-hover);
+    border-color: var(--accent);
+  }
+  .file-selector-btn .file-selector-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .file-selector-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    min-width: 220px;
+    max-width: 300px;
+    max-height: 300px;
+    overflow-y: auto;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    z-index: 50;
+    display: none;
+  }
+  .file-selector-dropdown.show {
+    display: block;
+  }
+  .file-selector-dropdown .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    font-size: 13px;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background 0.1s;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .file-selector-dropdown .dropdown-item:hover {
+    background: var(--bg-tertiary);
+  }
+  .file-selector-dropdown .dropdown-item.active {
+    background: rgba(76,110,245,0.08);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .file-selector-dropdown .dropdown-item .item-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .file-selector-dropdown .dropdown-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 4px 0;
+  }
+  .file-selector-dropdown .dropdown-upload {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    font-size: 13px;
+    color: var(--accent);
+    cursor: pointer;
+    transition: background 0.1s;
+    font-weight: 500;
+  }
+  .file-selector-dropdown .dropdown-upload:hover {
+    background: rgba(76,110,245,0.06);
+  }
+
+  /* ===== 笔记按钮与卡片 ===== */
+  .note-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: none;
+    background: transparent;
+    font-size: 16px;
+    color: var(--text-muted);
+  }
+  .note-btn:hover {
+    background: rgba(251,191,36,0.1);
+    color: #d97706;
+  }
+  .note-btn.has-note {
+    color: #d97706;
+  }
+  .note-card {
+    background: #fefce8;
+    border: 1px solid #fde68a;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+  .note-card strong { color: var(--text-primary); }
+  .note-card ul, .note-card ol { padding-left: 20px; margin: 4px 0; }
+  .note-card li { margin: 2px 0; }
+  .note-input-area {
+    margin-top: 8px;
+    background: #fefce8;
+    border: 1px solid #fde68a;
+    border-radius: 8px;
+    padding: 10px;
+  }
+  .note-input-area textarea {
+    width: 100%;
+    min-height: 60px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 13px;
+    resize: vertical;
+    outline: none;
+    background: white;
+    color: var(--text-primary);
+    font-family: inherit;
+    line-height: 1.5;
+  }
+  .note-input-area textarea:focus {
+    border-color: var(--accent);
+  }
+  .note-input-area .note-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+    justify-content: flex-end;
+  }
+  .note-input-area .note-actions button {
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+  }
+  .note-save-btn {
+    background: var(--accent);
+    color: white;
+  }
+  .note-save-btn:hover { background: var(--accent-hover); }
+  .note-cancel-btn {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+  }
+  .note-cancel-btn:hover { background: var(--bg-hover); }
+  .note-delete-btn {
+    background: transparent;
+    color: #ef4444;
+    margin-right: auto;
+  }
+  .note-delete-btn:hover { background: rgba(239,68,68,0.1); }
+
+  /* ===== 字幕列表笔记小图标 ===== */
+  .subtitle-note-icon {
+    font-size: 11px;
+    margin-left: auto;
+    color: #d97706;
+    flex-shrink: 0;
+  }
+
   /* ===== 响应式 ===== */
   @media (max-width: 768px) {
     .main-layout {
@@ -383,13 +628,19 @@
     </div>
     <!-- 操作按钮 -->
     <div class="flex items-center gap-2">
-      <button id="btn-upload-new" class="hidden px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
-        style="background:var(--bg-tertiary);color:var(--text-secondary)"
-        onmouseover="this.style.background='var(--bg-hover)'"
-        onmouseout="this.style.background='var(--bg-tertiary)'"
-        onclick="resetApp()">
-        📂 重新上传
-      </button>
+      <!-- 文件选择下拉框 -->
+      <div id="file-selector" class="file-selector hidden">
+        <div class="file-selector-btn" onclick="toggleFileDropdown()" title="切换文件">
+          <span>📂</span>
+          <span id="file-selector-name" class="file-selector-name">—</span>
+          <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </div>
+        <div id="file-selector-dropdown" class="file-selector-dropdown">
+          <!-- 动态生成文件列表 -->
+        </div>
+      </div>
       <button id="btn-export" class="hidden px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
         style="background:var(--accent);color:white"
         onmouseover="this.style.background='var(--accent-hover)'"
@@ -413,9 +664,12 @@
   </div>
 </header>
 
+<!-- 全局文件选择（不在任何页面内，确保始终可用） -->
+<input type="file" id="file-input" accept=".srt" class="hidden">
+
 <!-- ===== 上传页面 ===== -->
 <div id="upload-page" class="flex items-center justify-center" style="min-height:calc(100vh - 56px)">
-  <div class="text-center px-4">
+  <div class="text-center px-4 w-full max-w-2xl mx-auto">
     <div id="drop-zone" class="upload-zone rounded-2xl p-16 mx-auto max-w-lg"
       style="background:var(--bg-secondary)">
       <svg class="mx-auto mb-4 w-16 h-16" fill="none" stroke="var(--accent)" stroke-width="1.5" viewBox="0 0 24 24">
@@ -423,7 +677,6 @@
       </svg>
       <p class="text-lg font-semibold mb-2" style="color:var(--text-primary)">拖拽 SRT 文件到此处</p>
       <p class="text-sm mb-4" style="color:var(--text-muted)">或点击选择文件</p>
-      <input type="file" id="file-input" accept=".srt" class="hidden">
       <button onclick="document.getElementById('file-input').click()"
         class="px-6 py-2 rounded-lg text-sm font-medium transition-colors"
         style="background:var(--accent);color:white">
@@ -431,6 +684,13 @@
       </button>
     </div>
     <p class="mt-4 text-xs" style="color:var(--text-muted)">支持标准 SRT 格式 · 纯前端处理 · 数据不上传服务器</p>
+    <!-- 历史文件列表 -->
+    <div id="file-history-section" class="mt-6 hidden text-left">
+      <h3 class="text-sm font-semibold mb-3" style="color:var(--text-secondary)">📁 历史文件</h3>
+      <div id="file-history-list" class="grid gap-2">
+        <!-- 动态生成文件卡片 -->
+      </div>
+    </div>
   </div>
 </div>
 
@@ -440,6 +700,8 @@
     <!-- 左侧：字幕列表 -->
     <div class="subtitle-panel flex flex-col" style="width:40%;border-right:1px solid var(--border)">
       <div class="px-4 py-3 flex items-center gap-2" style="border-bottom:1px solid var(--border);background:var(--bg-secondary)">
+        <span id="current-file-label" class="text-xs font-medium truncate max-w-[100px]" style="color:var(--accent)" title="">—</span>
+        <span class="text-xs" style="color:var(--border)">|</span>
         <span class="text-sm font-medium" style="color:var(--text-secondary)">字幕列表</span>
         <input id="search-input" type="text" placeholder="搜索字幕..."
           class="px-3 py-1 rounded-lg text-sm outline-none flex-1"
@@ -534,27 +796,33 @@
 // =====================================================================
 let subtitles = [];        // 解析后的字幕数组
 let currentIdx = -1;       // 当前选中索引
+let currentFileKey = '';   // 当前打开的文件名（IndexedDB key）
+let notesMap = {};         // 当前文件的笔记缓存 { "文件名::索引": noteObj }
 let dictCache = {};        // Free Dictionary API 缓存
 let youdaoCache = {};    // 有道词典中文翻译缓存
 let analysisCache = {};    // 逐词分析缓存 { sentenceKey: wordAnalysis[] }
 let grammarCache = {};     // 语法分析缓存
-let aiExplanationCache = {}; // AI 解释缓存 { sentence: { translation, grammar, expressions, vocabulary } }
+let aiExplanationCache = {}; // AI 解释缓存 { sentence: { translation, grammar, expressions, vocabulary } }（按文件隔离，切换文件时清空）
 let aiPreloadPromise = null; // 预生成数据加载 Promise
 let aiLoadingState = false;  // AI 是否正在加载
 let favFilterActive = false; // 收藏过滤是否激活
 
-// ===== 收藏功能 =====
-const FAV_KEY = 'srt_favorites';
+// ===== 收藏功能（按文件隔离） =====
+const FAV_KEY_PREFIX = 'srt_favorites_';
+
+function getFavKey() {
+  return FAV_KEY_PREFIX + (currentFileKey || 'default');
+}
 
 function getFavorites() {
   try {
-    const raw = localStorage.getItem(FAV_KEY);
+    const raw = localStorage.getItem(getFavKey());
     return raw ? JSON.parse(raw) : [];
   } catch(e) { return []; }
 }
 
 function saveFavorites(favs) {
-  localStorage.setItem(FAV_KEY, JSON.stringify(favs));
+  localStorage.setItem(getFavKey(), JSON.stringify(favs));
 }
 
 function isFavorite(idx) {
@@ -611,6 +879,434 @@ function toggleFavFilter() {
     if (svg) svg.setAttribute('fill', 'none');
   }
   renderSubtitleList(document.getElementById('search-input').value);
+}
+
+// =====================================================================
+// IndexedDB 工具函数（库名 srt-analyzer-db，两个 store：files / notes）
+// =====================================================================
+const DB_NAME = 'srt-analyzer-db';
+const DB_VERSION = 1;
+
+function dbOpen() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      // 文件 store：key 是文件名
+      if (!db.objectStoreNames.contains('files')) {
+        db.createObjectStore('files', { keyPath: 'name' });
+      }
+      // 笔记 store：key 是 "文件名::句子索引"
+      if (!db.objectStoreNames.contains('notes')) {
+        db.createObjectStore('notes', { keyPath: 'key' });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function dbSaveFile(fileObj) {
+  const db = await dbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('files', 'readwrite');
+    tx.objectStore('files').put(fileObj);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function dbLoadFile(name) {
+  const db = await dbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('files', 'readonly');
+    const req = tx.objectStore('files').get(name);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function dbDeleteFile(name) {
+  const db = await dbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('files', 'readwrite');
+    tx.objectStore('files').delete(name);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function dbListFiles() {
+  const db = await dbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('files', 'readonly');
+    const req = tx.objectStore('files').getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function dbSaveNote(key, noteObj) {
+  const db = await dbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('notes', 'readwrite');
+    tx.objectStore('notes').put({ key, ...noteObj });
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function dbLoadNote(key) {
+  const db = await dbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('notes', 'readonly');
+    const req = tx.objectStore('notes').get(key);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function dbDeleteNote(key) {
+  const db = await dbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('notes', 'readwrite');
+    tx.objectStore('notes').delete(key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function dbLoadAllNotes(fileKey) {
+  const db = await dbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('notes', 'readonly');
+    const req = tx.objectStore('notes').getAll();
+    req.onsuccess = () => {
+      // 过滤出属于当前文件的笔记
+      const prefix = fileKey + '::';
+      const notes = (req.result || []).filter(n => n.key && n.key.startsWith(prefix));
+      const map = {};
+      for (const n of notes) {
+        map[n.key] = n;
+      }
+      resolve(map);
+    };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function dbDeleteNotesByFile(fileKey) {
+  // 删除某文件的所有笔记
+  const allNotes = await dbLoadAllNotes(fileKey);
+  const db = await dbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('notes', 'readwrite');
+    const store = tx.objectStore('notes');
+    for (const key of Object.keys(allNotes)) {
+      store.delete(key);
+    }
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+// =====================================================================
+// 文件管理功能
+// =====================================================================
+
+// 渲染上传页的历史文件列表
+async function renderFileHistory() {
+  const files = await dbListFiles();
+  const section = document.getElementById('file-history-section');
+  const list = document.getElementById('file-history-list');
+
+  if (files.length === 0) {
+    section.classList.add('hidden');
+    return;
+  }
+
+  section.classList.remove('hidden');
+  // 按上传时间降序排列
+  files.sort((a, b) => (b.uploadTime || 0) - (a.uploadTime || 0));
+
+  list.innerHTML = files.map(f => {
+    const timeStr = f.uploadTime ? new Date(f.uploadTime).toLocaleString('zh-CN') : '未知';
+    return `
+      <div class="file-history-card" onclick="openFile('${escapeAttr(f.name)}')">
+        <div class="file-icon">📄</div>
+        <div class="file-info">
+          <div class="file-name">${escapeHtml(f.name)}</div>
+          <div class="file-meta">${f.subtitleCount || '?'} 条字幕 · ${timeStr}</div>
+        </div>
+        <div class="file-delete" onclick="event.stopPropagation(); deleteFile('${escapeAttr(f.name)}')" title="删除">✕</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// 打开指定文件
+async function openFile(name) {
+  const fileObj = await dbLoadFile(name);
+  if (!fileObj || !fileObj.subtitles) {
+    alert('文件数据加载失败');
+    return;
+  }
+  currentFileKey = name;
+  subtitles = fileObj.subtitles;
+  currentIdx = -1;
+  analysisCache = {};
+  grammarCache = {};
+  aiExplanationCache = {};
+  favFilterActive = false;
+
+  // 保存当前文件名到 localStorage
+  localStorage.setItem('srt_current_file', name);
+
+  // 加载该文件的笔记
+  notesMap = await dbLoadAllNotes(name);
+
+  // 加载 AI 预生成数据
+  aiPreloadPromise = loadAIExplanationsFile();
+
+  showMainPage();
+}
+
+// 删除指定文件
+async function deleteFile(name) {
+  if (!confirm(`确定删除 "${name}" 吗？该文件的所有笔记也将被删除。`)) return;
+  await dbDeleteFile(name);
+  await dbDeleteNotesByFile(name);
+  // 删除对应的收藏
+  localStorage.removeItem(FAV_KEY_PREFIX + name);
+
+  // 如果删除的是当前打开的文件，回到上传页
+  if (name === currentFileKey) {
+    currentFileKey = '';
+    subtitles = [];
+    currentIdx = -1;
+    localStorage.removeItem('srt_current_file');
+    document.getElementById('upload-page').classList.remove('hidden');
+    document.getElementById('main-page').classList.add('hidden');
+    document.getElementById('stats').classList.add('hidden');
+    document.getElementById('btn-export').classList.add('hidden');
+    document.getElementById('file-selector').classList.add('hidden');
+    document.getElementById('analysis-placeholder').classList.remove('hidden');
+    document.getElementById('analysis-content').classList.add('hidden');
+    document.getElementById('subtitle-list').innerHTML = '';
+    document.getElementById('search-input').value = '';
+  }
+  // 刷新历史列表
+  await renderFileHistory();
+  // 刷新工具栏下拉框
+  await updateFileSelector();
+}
+
+// 工具栏文件下拉框
+let fileDropdownOpen = false;
+
+function toggleFileDropdown() {
+  fileDropdownOpen = !fileDropdownOpen;
+  const dropdown = document.getElementById('file-selector-dropdown');
+  if (fileDropdownOpen) {
+    dropdown.classList.add('show');
+    renderFileDropdown();
+  } else {
+    dropdown.classList.remove('show');
+  }
+}
+
+// 点击外部关闭下拉框
+document.addEventListener('click', e => {
+  const selector = document.getElementById('file-selector');
+  if (selector && !selector.contains(e.target)) {
+    fileDropdownOpen = false;
+    document.getElementById('file-selector-dropdown')?.classList.remove('show');
+  }
+});
+
+async function renderFileDropdown() {
+  const files = await dbListFiles();
+  const dropdown = document.getElementById('file-selector-dropdown');
+  files.sort((a, b) => (b.uploadTime || 0) - (a.uploadTime || 0));
+
+  let html = files.map(f => `
+    <div class="dropdown-item ${f.name === currentFileKey ? 'active' : ''}"
+         onclick="switchToFile('${escapeAttr(f.name)}')">
+      <span>📄</span>
+      <span class="item-name">${escapeHtml(f.name)}</span>
+      <span class="text-xs" style="color:var(--text-muted)">${f.subtitleCount || '?'}</span>
+    </div>
+  `).join('');
+
+  html += `
+    <div class="dropdown-divider"></div>
+    <div class="dropdown-upload" onclick="triggerFileUpload()">
+      <span>➕</span>
+      <span>上传新文件</span>
+    </div>
+  `;
+  dropdown.innerHTML = html;
+}
+
+async function updateFileSelector() {
+  const nameEl = document.getElementById('file-selector-name');
+  if (nameEl && currentFileKey) {
+    nameEl.textContent = currentFileKey;
+    nameEl.title = currentFileKey;
+  }
+  if (fileDropdownOpen) {
+    await renderFileDropdown();
+  }
+}
+
+function triggerFileUpload() {
+  // 关闭下拉框
+  fileDropdownOpen = false;
+  document.getElementById('file-selector-dropdown')?.classList.remove('show');
+  // 触发文件选择
+  document.getElementById('file-input').click();
+}
+
+async function switchToFile(name) {
+  // 关闭下拉框
+  fileDropdownOpen = false;
+  document.getElementById('file-selector-dropdown')?.classList.remove('show');
+
+  if (name === currentFileKey) return;
+  await openFile(name);
+}
+
+// HTML 属性转义（防止文件名中的引号导致 XSS）
+function escapeAttr(str) {
+  return str.replace(/&/g, '&amp;').replace(/'/g, '&#39;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// =====================================================================
+// 句子笔记功能
+// =====================================================================
+
+function getNoteKey(idx) {
+  return currentFileKey + '::' + idx;
+}
+
+function hasNote(idx) {
+  return !!notesMap[getNoteKey(idx)];
+}
+
+async function toggleNote(idx) {
+  const key = getNoteKey(idx);
+  const existing = notesMap[key];
+  if (existing) {
+    // 已有笔记：显示编辑区域
+    showNoteEditor(idx, existing.text || '');
+  } else {
+    // 无笔记：显示空白编辑区域
+    showNoteEditor(idx, '');
+  }
+}
+
+function showNoteEditor(idx, initialText) {
+  // 在分析面板中渲染笔记编辑区
+  const noteContainer = document.getElementById('note-container');
+  if (!noteContainer) return;
+  noteContainer.innerHTML = `
+    <div class="note-input-area">
+      <textarea id="note-textarea" placeholder="输入笔记（支持 **加粗** 和 - 列表格式）">${escapeHtml(initialText)}</textarea>
+      <div class="note-actions">
+        <button class="note-delete-btn" onclick="deleteNote(${idx})" style="${initialText ? '' : 'display:none'}">🗑 删除</button>
+        <button class="note-cancel-btn" onclick="cancelNoteEdit()">取消</button>
+        <button class="note-save-btn" onclick="saveNoteFromEditor(${idx})">保存</button>
+      </div>
+    </div>
+  `;
+  // 聚焦
+  setTimeout(() => document.getElementById('note-textarea')?.focus(), 100);
+}
+
+async function saveNoteFromEditor(idx) {
+  const textarea = document.getElementById('note-textarea');
+  if (!textarea) return;
+  const text = textarea.value.trim();
+  const key = getNoteKey(idx);
+
+  try {
+    if (text) {
+      const noteObj = { fileKey: currentFileKey, sentenceIdx: idx, text, updatedAt: Date.now() };
+      await dbSaveNote(key, noteObj);
+      notesMap[key] = { key, ...noteObj };
+    } else {
+      // 空文本则删除笔记
+      await dbDeleteNote(key);
+      delete notesMap[key];
+    }
+  } catch(e) {
+    console.warn('[Note] 保存笔记失败:', e);
+  }
+
+  // 重新渲染笔记显示
+  renderNoteDisplay(idx);
+  // 刷新字幕列表中的笔记图标
+  renderSubtitleList(document.getElementById('search-input').value);
+  // 更新笔记按钮状态
+  updateNoteBtnState(idx);
+}
+
+async function deleteNote(idx) {
+  const key = getNoteKey(idx);
+  try {
+    await dbDeleteNote(key);
+  } catch(e) {
+    console.warn('[Note] 删除笔记失败:', e);
+  }
+  delete notesMap[key];
+  renderNoteDisplay(idx);
+  renderSubtitleList(document.getElementById('search-input').value);
+  updateNoteBtnState(idx);
+}
+
+function cancelNoteEdit() {
+  // 隐藏编辑区，恢复显示
+  if (currentIdx >= 0) {
+    renderNoteDisplay(currentIdx);
+    updateNoteBtnState(currentIdx);
+  }
+}
+
+function renderNoteDisplay(idx) {
+  const noteContainer = document.getElementById('note-container');
+  if (!noteContainer) return;
+  const key = getNoteKey(idx);
+  const note = notesMap[key];
+  if (note && note.text) {
+    // 渲染 Markdown 格式的笔记
+    noteContainer.innerHTML = `
+      <div class="note-card">
+        <div class="flex items-center justify-between mb-1">
+          <span class="text-xs font-semibold" style="color:#d97706">📝 笔记</span>
+          <button class="text-xs px-2 py-0.5 rounded" style="color:var(--text-muted);background:transparent" 
+            onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text-muted)'"
+            onclick="toggleNote(${idx})">编辑</button>
+        </div>
+        <div class="ai-md-content">${renderMD(note.text)}</div>
+      </div>
+    `;
+  } else {
+    noteContainer.innerHTML = '';
+  }
+}
+
+function updateNoteBtnState(idx) {
+  const btn = document.getElementById('note-btn');
+  if (!btn) return;
+  if (hasNote(idx)) {
+    btn.classList.add('has-note');
+    btn.textContent = '📝';
+    btn.title = '编辑笔记';
+  } else {
+    btn.classList.remove('has-note');
+    btn.textContent = '📝';
+    btn.title = '添加笔记';
+  }
 }
 
 // =====================================================================
@@ -2171,7 +2867,7 @@ function handleFile(file) {
   }
   // 先用 ArrayBuffer 读取，再尝试 UTF-8 解码；如果检测到乱码（大量 U+FFFD），自动回退用 GBK 解码
   const reader = new FileReader();
-  reader.onload = e => {
+  reader.onload = async e => {
     const buffer = e.target.result;
     const uint8 = new Uint8Array(buffer);
 
@@ -2191,19 +2887,41 @@ function handleFile(file) {
       text = utf8Text;
     }
 
-    subtitles = parseSRT(text);
-    if (subtitles.length === 0) {
+    const parsed = parseSRT(text);
+    if (parsed.length === 0) {
       alert('无法解析该 SRT 文件，请检查格式');
       return;
     }
-    // 保存到 localStorage，下次打开自动加载
+
+    // 保存到 IndexedDB
+    currentFileKey = file.name;
+    subtitles = parsed;
+    currentIdx = -1;
+    analysisCache = {};
+    grammarCache = {};
+    aiExplanationCache = {};
+    favFilterActive = false;
+
+    const fileObj = {
+      name: file.name,
+      subtitles: parsed,
+      uploadTime: Date.now(),
+      subtitleCount: parsed.length
+    };
+
     try {
-      localStorage.setItem('srt_subtitles', JSON.stringify(subtitles));
-      localStorage.setItem('srt_filename', file.name);
-      console.log(`[Storage] 已缓存 ${subtitles.length} 条字幕到本地`);
+      await dbSaveFile(fileObj);
+      console.log(`[IndexedDB] 已保存文件 ${file.name}，共 ${parsed.length} 条字幕`);
     } catch(e) {
-      console.warn('[Storage] 缓存失败（可能数据过大）:', e);
+      console.warn('[IndexedDB] 保存失败:', e);
     }
+
+    // 保存当前文件名到 localStorage
+    localStorage.setItem('srt_current_file', file.name);
+
+    // 加载该文件的笔记
+    notesMap = await dbLoadAllNotes(file.name);
+
     showMainPage();
   };
   reader.readAsArrayBuffer(file);
@@ -2217,7 +2935,21 @@ function showMainPage() {
   document.getElementById('main-page').classList.remove('hidden');
   document.getElementById('stats').classList.remove('hidden');
   document.getElementById('btn-export').classList.remove('hidden');
-  document.getElementById('btn-upload-new').classList.remove('hidden');
+  document.getElementById('file-selector').classList.remove('hidden');
+
+  // 更新文件选择器名称
+  const nameEl = document.getElementById('file-selector-name');
+  if (nameEl && currentFileKey) {
+    nameEl.textContent = currentFileKey;
+    nameEl.title = currentFileKey;
+  }
+
+  // 更新左侧面板文件名
+  const fileLabel = document.getElementById('current-file-label');
+  if (fileLabel && currentFileKey) {
+    fileLabel.textContent = currentFileKey;
+    fileLabel.title = currentFileKey;
+  }
 
   // 统计
   updateStats();
@@ -2284,6 +3016,7 @@ function renderSubtitleList(filter = '') {
     if (favFilterActive && !favs.includes(i)) continue;
 
     const isFav = favs.includes(i);
+    const hasNoteFlag = hasNote(i);
     const div = document.createElement('div');
     div.className = 'subtitle-item px-4 py-3' + (i === currentIdx ? ' active' : '');
     div.style.borderBottom = '1px solid var(--border)';
@@ -2291,7 +3024,8 @@ function renderSubtitleList(filter = '') {
       <div class="flex items-center gap-2 mb-1">
         <span class="text-xs font-mono" style="color:var(--accent)">${sub.index}</span>
         <span class="text-xs" style="color:var(--text-muted)">${sub.time}</span>
-        ${isFav ? '<svg class="w-3 h-3 ml-auto" viewBox="0 0 24 24" fill="#ef4444" stroke="#ef4444" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>' : ''}
+        ${isFav ? '<svg class="w-3 h-3" viewBox="0 0 24 24" fill="#ef4444" stroke="#ef4444" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>' : ''}
+        ${hasNoteFlag ? '<span class="subtitle-note-icon">📝</span>' : ''}
       </div>
       <div class="text-sm" style="color:var(--text-primary)">${escapeHtml(sub.text)}</div>
     `;
@@ -2419,10 +3153,11 @@ function renderAnalysis(sub, wordAnalysis, grammar) {
 
   content.innerHTML = `
     <div class="fade-in max-w-3xl">
-      <!-- 时间轴 + 收藏 -->
+      <!-- 时间轴 + 收藏 + 笔记 -->
       <div class="flex items-center gap-3 mb-4">
         <span class="text-xs font-mono px-2 py-1 rounded" style="background:var(--bg-tertiary);color:var(--accent)">#${sub.index}</span>
         <span class="text-xs" style="color:var(--text-muted)">${sub.time}</span>
+        <button id="note-btn" class="note-btn${hasNote(currentIdx) ? ' has-note' : ''}" onclick="toggleNote(${currentIdx})" title="${hasNote(currentIdx) ? '编辑笔记' : '添加笔记'}">📝</button>
         <button id="btn-favorite" onclick="toggleFavorite()" class="ml-auto p-1 rounded-lg transition-colors" title="收藏此句"
           style="color:var(--text-muted)"
           onmouseover="this.style.background='var(--bg-hover)'"
@@ -2443,6 +3178,9 @@ function renderAnalysis(sub, wordAnalysis, grammar) {
       <!-- 逐词分析 -->
       ${wordsHTML}
 
+      <!-- 笔记容器 -->
+      <div id="note-container"></div>
+
       <!-- AI 解释与扩展容器 -->
       <div id="ai-explanation-container"></div>
     </div>
@@ -2450,6 +3188,9 @@ function renderAnalysis(sub, wordAnalysis, grammar) {
 
   // 滚动到顶部
   content.scrollTop = 0;
+
+  // 渲染笔记显示（如果有）
+  renderNoteDisplay(currentIdx);
 }
 
 function getGramRoleName(cls) {
@@ -2592,8 +3333,11 @@ function exportJSON() {
 function resetApp() {
   subtitles = [];
   currentIdx = -1;
+  currentFileKey = '';
   analysisCache = {};
   grammarCache = {};
+  aiExplanationCache = {};
+  notesMap = {};
   favFilterActive = false;
   const favBtn = document.getElementById('btn-filter-fav');
   if (favBtn) {
@@ -2604,19 +3348,22 @@ function resetApp() {
     const svg = favBtn.querySelector('svg');
     if (svg) svg.setAttribute('fill', 'none');
   }
-  // 清除本地缓存
+  // 清除 localStorage 缓存（兼容旧版）
   localStorage.removeItem('srt_subtitles');
   localStorage.removeItem('srt_filename');
+  localStorage.removeItem('srt_current_file');
   document.getElementById('upload-page').classList.remove('hidden');
   document.getElementById('main-page').classList.add('hidden');
   document.getElementById('stats').classList.add('hidden');
   document.getElementById('btn-export').classList.add('hidden');
-  document.getElementById('btn-upload-new').classList.add('hidden');
+  document.getElementById('file-selector').classList.add('hidden');
   document.getElementById('analysis-placeholder').classList.remove('hidden');
   document.getElementById('analysis-content').classList.add('hidden');
   document.getElementById('subtitle-list').innerHTML = '';
   document.getElementById('search-input').value = '';
   fileInput.value = '';
+  // 刷新上传页的历史列表
+  renderFileHistory();
 }
 
 // =====================================================================
@@ -2652,20 +3399,89 @@ function scrollToItem(idx) {
 }
 
 // =====================================================================
-// 页面加载时自动恢复缓存
+// 页面加载时自动恢复（优先从 IndexedDB 恢复，兼容旧版 localStorage）
 // =====================================================================
-(function restoreFromCache() {
+(async function restoreFromCache() {
   try {
-    const cached = localStorage.getItem('srt_subtitles');
-    if (cached) {
-      subtitles = JSON.parse(cached);
-      if (subtitles.length > 0) {
-        console.log(`[Storage] 从本地缓存恢复 ${subtitles.length} 条字幕`);
+    // 尝试从 IndexedDB 恢复
+    const files = await dbListFiles();
+    if (files.length > 0) {
+      // 尝试恢复上次打开的文件
+      const lastFile = localStorage.getItem('srt_current_file');
+      if (lastFile) {
+        const fileObj = await dbLoadFile(lastFile);
+        if (fileObj && fileObj.subtitles && fileObj.subtitles.length > 0) {
+          currentFileKey = lastFile;
+          subtitles = fileObj.subtitles;
+          notesMap = await dbLoadAllNotes(lastFile);
+          console.log(`[IndexedDB] 恢复上次打开的文件 ${lastFile}，共 ${subtitles.length} 条字幕`);
+          showMainPage();
+          return;
+        }
+      }
+      // 没有上次打开的记录，恢复最新上传的文件
+      files.sort((a, b) => (b.uploadTime || 0) - (a.uploadTime || 0));
+      const latest = files[0];
+      const fileObj = await dbLoadFile(latest.name);
+      if (fileObj && fileObj.subtitles && fileObj.subtitles.length > 0) {
+        currentFileKey = latest.name;
+        subtitles = fileObj.subtitles;
+        notesMap = await dbLoadAllNotes(latest.name);
+        localStorage.setItem('srt_current_file', latest.name);
+        console.log(`[IndexedDB] 恢复最新文件 ${latest.name}，共 ${subtitles.length} 条字幕`);
         showMainPage();
+        return;
       }
     }
+
+    // 兼容旧版：从 localStorage 恢复（迁移到 IndexedDB）
+    const cached = localStorage.getItem('srt_subtitles');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (parsed.length > 0) {
+        const filename = localStorage.getItem('srt_filename') || 'migrated.srt';
+        currentFileKey = filename;
+        subtitles = parsed;
+        // 迁移到 IndexedDB
+        const fileObj = {
+          name: filename,
+          subtitles: parsed,
+          uploadTime: Date.now(),
+          subtitleCount: parsed.length
+        };
+        await dbSaveFile(fileObj);
+        localStorage.setItem('srt_current_file', filename);
+        notesMap = await dbLoadAllNotes(filename);
+        console.log(`[Migration] 从 localStorage 迁移 ${filename} 到 IndexedDB`);
+        // 清除旧版缓存
+        localStorage.removeItem('srt_subtitles');
+        localStorage.removeItem('srt_filename');
+        showMainPage();
+        return;
+      }
+    }
+
+    // 没有任何缓存，显示上传页并渲染历史列表
+    renderFileHistory();
   } catch(e) {
-    console.warn('[Storage] 恢复缓存失败:', e);
+    console.warn('[Restore] 恢复缓存失败:', e);
+    // 降级：尝试旧版 localStorage
+    try {
+      const cached = localStorage.getItem('srt_subtitles');
+      if (cached) {
+        subtitles = JSON.parse(cached);
+        if (subtitles.length > 0) {
+          currentFileKey = localStorage.getItem('srt_filename') || 'unknown.srt';
+          console.log(`[Storage] 从 localStorage 恢复 ${subtitles.length} 条字幕`);
+          showMainPage();
+          return;
+        }
+      }
+    } catch(e2) {
+      console.warn('[Storage] 旧版恢复也失败:', e2);
+    }
+    // 显示上传页
+    renderFileHistory();
   }
 })();
 </script>
