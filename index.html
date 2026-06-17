@@ -125,15 +125,7 @@
   }
   .loading-pulse { animation: pulse 1.5s infinite; }
 
-  @keyframes blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0; }
-  }
-  .ai-streaming-cursor {
-    animation: blink 0.8s infinite;
-    color: var(--accent);
-    font-weight: bold;
-  }
+
 
   /* ===== 骨架屏动画 ===== */
   @keyframes shimmer {
@@ -754,8 +746,8 @@
 
 <!-- ===== AI 设置模态框 ===== -->
 <div id="settings-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeSettingsModal()">
-  <div class="modal-content fade-in">
-    <div class="flex items-center justify-between mb-5">
+  <div class="modal-content fade-in" style="max-width:540px">
+    <div class="flex items-center justify-between mb-4">
       <h3 class="text-lg font-bold" style="color:var(--text-primary)">⚙️ AI 设置</h3>
       <button onclick="closeSettingsModal()" class="p-1 rounded-lg transition-colors"
         style="color:var(--text-muted)"
@@ -766,37 +758,61 @@
         </svg>
       </button>
     </div>
-    <p class="text-sm mb-4" style="color:var(--text-secondary)">配置 AI API 以启用逐句解释与扩展功能。支持任何 OpenAI 兼容接口。</p>
-    <div class="mb-4">
-      <label class="block text-sm font-medium mb-1.5" style="color:var(--text-primary)">API Base URL</label>
-      <input id="settings-base-url" type="text" placeholder="https://api.deepseek.com/v1" value="">
-      <p class="text-xs mt-1" style="color:var(--text-muted)">OpenAI / DeepSeek / Moonshot / 其他兼容接口</p>
+    <p class="text-sm mb-3" style="color:var(--text-secondary)">配置多个 AI API，按优先级自动降级。支持任何 OpenAI 兼容接口。</p>
+
+    <!-- 配置列表 -->
+    <div id="settings-config-list" class="mb-3" style="max-height:300px;overflow-y:auto">
+      <!-- 动态生成 -->
     </div>
-    <div class="mb-5">
-      <label class="block text-sm font-medium mb-1.5" style="color:var(--text-primary)">API Key</label>
-      <input id="settings-api-key" type="password" placeholder="sk-..." value="">
-      <p class="text-xs mt-1" style="color:var(--text-muted)">密钥仅保存在本地浏览器，不会上传</p>
+
+    <!-- 添加配置按钮 -->
+    <button onclick="addNewConfig()" class="w-full py-2 rounded-lg text-sm font-medium transition-colors mb-3"
+      style="background:var(--bg-tertiary);color:var(--accent);border:1px dashed var(--border)"
+      onmouseover="this.style.background='var(--bg-hover)'"
+      onmouseout="this.style.background='var(--bg-tertiary)'">
+      ＋ 添加配置
+    </button>
+
+    <!-- 编辑表单（隐藏，添加/编辑时显示） -->
+    <div id="settings-edit-form" class="hidden" style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px">
+      <div class="flex items-center justify-between mb-3">
+        <span id="settings-edit-title" class="text-sm font-semibold" style="color:var(--text-primary)">添加配置</span>
+        <button onclick="cancelEditConfig()" class="text-xs" style="color:var(--text-muted)">取消</button>
+      </div>
+      <div class="mb-3">
+        <label class="block text-xs font-medium mb-1" style="color:var(--text-secondary)">名称</label>
+        <input id="edit-name" type="text" placeholder="如：DeepSeek" style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg-primary);color:var(--text-primary);outline:none">
+      </div>
+      <div class="mb-3">
+        <label class="block text-xs font-medium mb-1" style="color:var(--text-secondary)">API Base URL</label>
+        <input id="edit-base-url" type="text" placeholder="https://api.deepseek.com/v1" style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg-primary);color:var(--text-primary);outline:none">
+      </div>
+      <div class="mb-3">
+        <label class="block text-xs font-medium mb-1" style="color:var(--text-secondary)">API Key</label>
+        <input id="edit-api-key" type="password" placeholder="sk-..." style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg-primary);color:var(--text-primary);outline:none">
+        <p class="text-xs mt-1" style="color:var(--text-muted)">密钥仅保存在本地浏览器，不会上传</p>
+      </div>
+      <div class="mb-3">
+        <label class="block text-xs font-medium mb-1" style="color:var(--text-secondary)">模型名称</label>
+        <input id="edit-model" type="text" placeholder="deepseek-chat" style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg-primary);color:var(--text-primary);outline:none">
+      </div>
+      <div class="flex gap-2">
+        <button onclick="saveEditConfig()" class="flex-1 py-1.5 rounded-lg text-sm font-medium transition-colors"
+          style="background:var(--accent);color:white"
+          onmouseover="this.style.background='var(--accent-hover)'"
+          onmouseout="this.style.background='var(--accent)'">
+          保存
+        </button>
+        <button onclick="cancelEditConfig()" class="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
+          style="background:var(--bg-tertiary);color:var(--text-secondary)"
+          onmouseover="this.style.background='var(--bg-hover)'"
+          onmouseout="this.style.background='var(--bg-tertiary)'">
+          取消
+        </button>
+      </div>
     </div>
-    <div class="mb-5">
-      <label class="block text-sm font-medium mb-1.5" style="color:var(--text-primary)">模型名称</label>
-      <input id="settings-model" type="text" placeholder="deepseek-chat" value="">
-      <p class="text-xs mt-1" style="color:var(--text-muted)">留空则使用默认模型 deepseek-chat</p>
-    </div>
-    <div class="flex items-center gap-3">
-      <button onclick="saveSettings()" class="flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-        style="background:var(--accent);color:white"
-        onmouseover="this.style.background='var(--accent-hover)'"
-        onmouseout="this.style.background='var(--accent)'">
-        保存设置
-      </button>
-      <button onclick="closeSettingsModal()" class="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-        style="background:var(--bg-tertiary);color:var(--text-secondary)"
-        onmouseover="this.style.background='var(--bg-hover)'"
-        onmouseout="this.style.background='var(--bg-tertiary)'">
-        取消
-      </button>
-    </div>
-    <div id="settings-status" class="mt-3 text-sm hidden" style="color:var(--accent)"></div>
+
+    <div id="settings-status" class="text-sm hidden" style="color:var(--accent)"></div>
   </div>
 </div>
 
@@ -1328,22 +1344,29 @@ const AI_SETTINGS_KEY = 'srt_analyzer_ai_settings';
 function getAISettings() {
   try {
     const raw = localStorage.getItem(AI_SETTINGS_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // 兼容旧格式：如果是对象，转为数组
+      if (Array.isArray(parsed)) return parsed;
+      if (typeof parsed === 'object' && parsed !== null) {
+        // 旧格式：{ baseUrl, apiKey, model } → 转为数组
+        return [{ name: parsed.name || '默认', baseUrl: parsed.baseUrl || '', apiKey: parsed.apiKey || '', model: parsed.model || 'deepseek-chat' }];
+      }
+    }
   } catch (e) {}
-  return { baseUrl: 'https://api.deepseek.com/v1', apiKey: '', model: 'deepseek-chat' };
+  return [];
 }
 
 function isAIConfigured() {
-  const settings = getAISettings();
-  return !!(settings.apiKey && settings.baseUrl);
+  const configs = getAISettings();
+  return configs.some(c => c.apiKey && c.baseUrl);
 }
 
 function openSettingsModal() {
-  const settings = getAISettings();
-  document.getElementById('settings-base-url').value = settings.baseUrl || 'https://api.deepseek.com/v1';
-  document.getElementById('settings-api-key').value = settings.apiKey || '';
-  document.getElementById('settings-model').value = settings.model || 'deepseek-chat';
+  // 隐藏编辑表单，显示配置列表
+  document.getElementById('settings-edit-form').classList.add('hidden');
   document.getElementById('settings-status').classList.add('hidden');
+  renderConfigList();
   document.getElementById('settings-modal').classList.remove('hidden');
 }
 
@@ -1351,10 +1374,81 @@ function closeSettingsModal() {
   document.getElementById('settings-modal').classList.add('hidden');
 }
 
-function saveSettings() {
-  const baseUrl = document.getElementById('settings-base-url').value.trim().replace(/\/+$/, '');
-  const apiKey = document.getElementById('settings-api-key').value.trim();
-  const model = document.getElementById('settings-model').value.trim() || 'gpt-4o-mini';
+// 当前正在编辑的配置索引（-1 表示新增）
+let editingConfigIdx = -1;
+
+// 渲染配置列表
+function renderConfigList() {
+  const configs = getAISettings();
+  const listEl = document.getElementById('settings-config-list');
+  if (!listEl) return;
+
+  if (configs.length === 0) {
+    listEl.innerHTML = '<div class="text-center py-6 text-sm" style="color:var(--text-muted)">暂无配置，请点击下方"添加配置"</div>';
+    return;
+  }
+
+  listEl.innerHTML = configs.map((cfg, idx) => {
+    const isActive = idx === 0;
+    const hasKey = !!(cfg.apiKey && cfg.baseUrl);
+    const statusDot = hasKey
+      ? '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#16a34a" title="已配置"></span>'
+      : '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#adb5bd" title="未完成配置"></span>';
+    const prefix = isActive ? '<span style="color:var(--accent);font-weight:700">✓</span>' : '<span style="color:var(--border)">○</span>';
+    const shortUrl = cfg.baseUrl ? cfg.baseUrl.replace(/^https?:\/\//, '').replace(/\/v\d+\/?$/, '') : '—';
+    return `
+      <div class="flex items-center gap-2 py-2 px-3 rounded-lg mb-1 transition-colors" style="background:var(--bg-secondary);border:1px solid ${isActive ? 'var(--accent)' : 'var(--border)'}">
+        ${prefix}
+        ${statusDot}
+        <span class="text-sm font-medium flex-1 truncate" style="color:var(--text-primary)">${escapeHtml(cfg.name || '未命名')}</span>
+        <span class="text-xs truncate" style="color:var(--text-muted);max-width:120px" title="${escapeHtml(cfg.baseUrl || '')}">${escapeHtml(shortUrl)}</span>
+        <span class="text-xs" style="color:var(--text-muted)">${escapeHtml(cfg.model || '')}</span>
+        <button onclick="editConfig(${idx})" class="px-1.5 py-0.5 rounded text-xs transition-colors" style="color:var(--accent)" title="编辑">✏️</button>
+        <button onclick="moveConfigUp(${idx})" class="px-1.5 py-0.5 rounded text-xs transition-colors" style="color:var(--text-muted)" title="上移（设为首选）">⬆</button>
+        <button onclick="deleteConfig(${idx})" class="px-1.5 py-0.5 rounded text-xs transition-colors" style="color:#ef4444" title="删除">✕</button>
+      </div>
+    `;
+  }).join('');
+}
+
+// 添加新配置
+function addNewConfig() {
+  editingConfigIdx = -1;
+  document.getElementById('settings-edit-title').textContent = '添加配置';
+  document.getElementById('edit-name').value = '';
+  document.getElementById('edit-base-url').value = '';
+  document.getElementById('edit-api-key').value = '';
+  document.getElementById('edit-model').value = '';
+  document.getElementById('settings-edit-form').classList.remove('hidden');
+  document.getElementById('settings-status').classList.add('hidden');
+}
+
+// 编辑指定配置
+function editConfig(idx) {
+  const configs = getAISettings();
+  if (idx < 0 || idx >= configs.length) return;
+  editingConfigIdx = idx;
+  const cfg = configs[idx];
+  document.getElementById('settings-edit-title').textContent = '编辑配置';
+  document.getElementById('edit-name').value = cfg.name || '';
+  document.getElementById('edit-base-url').value = cfg.baseUrl || '';
+  document.getElementById('edit-api-key').value = cfg.apiKey || '';
+  document.getElementById('edit-model').value = cfg.model || '';
+  document.getElementById('settings-edit-form').classList.remove('hidden');
+  document.getElementById('settings-status').classList.add('hidden');
+}
+
+// 取消编辑
+function cancelEditConfig() {
+  document.getElementById('settings-edit-form').classList.add('hidden');
+}
+
+// 保存编辑（新增或修改）
+function saveEditConfig() {
+  const name = document.getElementById('edit-name').value.trim() || '未命名';
+  const baseUrl = document.getElementById('edit-base-url').value.trim().replace(/\/+$/, '');
+  const apiKey = document.getElementById('edit-api-key').value.trim();
+  const model = document.getElementById('edit-model').value.trim() || 'deepseek-chat';
 
   if (!baseUrl) {
     showSettingsStatus('请填写 API Base URL', true);
@@ -1365,11 +1459,47 @@ function saveSettings() {
     return;
   }
 
-  localStorage.setItem(AI_SETTINGS_KEY, JSON.stringify({ baseUrl, apiKey, model }));
-  showSettingsStatus('✅ 设置已保存', false);
-  // 更新当前面板的 AI 提示
+  const configs = getAISettings();
+  const newCfg = { name, baseUrl, apiKey, model };
+
+  if (editingConfigIdx >= 0 && editingConfigIdx < configs.length) {
+    // 修改已有配置
+    configs[editingConfigIdx] = newCfg;
+  } else {
+    // 新增配置
+    configs.push(newCfg);
+  }
+
+  localStorage.setItem(AI_SETTINGS_KEY, JSON.stringify(configs));
+  document.getElementById('settings-edit-form').classList.add('hidden');
+  showSettingsStatus('✅ 配置已保存', false);
+  renderConfigList();
   updateAISectionForCurrentSubtitle();
-  setTimeout(() => closeSettingsModal(), 800);
+}
+
+// 上移配置（设为首选）
+function moveConfigUp(idx) {
+  if (idx <= 0) return; // 已经是第一个
+  const configs = getAISettings();
+  [configs[idx - 1], configs[idx]] = [configs[idx], configs[idx - 1]];
+  localStorage.setItem(AI_SETTINGS_KEY, JSON.stringify(configs));
+  renderConfigList();
+  showSettingsStatus('✅ 已将 "' + escapeHtml(configs[idx - 1].name) + '" 设为首选', false);
+}
+
+// 删除配置
+function deleteConfig(idx) {
+  const configs = getAISettings();
+  const name = configs[idx]?.name || '未命名';
+  configs.splice(idx, 1);
+  localStorage.setItem(AI_SETTINGS_KEY, JSON.stringify(configs));
+  renderConfigList();
+  updateAISectionForCurrentSubtitle();
+}
+
+// 旧版 saveSettings 兼容（不再使用，但保留空函数以防报错）
+function saveSettings() {
+  // 已废弃，逻辑迁移到 saveEditConfig
 }
 
 function showSettingsStatus(msg, isError) {
@@ -1382,10 +1512,15 @@ function showSettingsStatus(msg, isError) {
 // =====================================================================
 // AI API 调用（OpenAI 兼容格式）
 // =====================================================================
-async function callAIAPI(sentence) {
-  const settings = getAISettings();
-  if (!settings.apiKey || !settings.baseUrl) {
-    return { error: '请先在设置中配置 AI API Key' };
+async function callAIAPI(sentence, signal) {
+  // 向后兼容：直接调用 callAIAPIWithFallback
+  return callAIAPIWithFallback(sentence, signal);
+}
+
+// 使用指定配置调用 AI API（核心调用函数）
+async function callAIAPIWithConfig(config, sentence, signal) {
+  if (!config.apiKey || !config.baseUrl) {
+    return { error: '配置不完整' };
   }
 
   const prompt = `你是一位资深的英语教师，正在帮中国学生深度理解一句英语。请像老师讲解一样，逐层拆解这句话，返回 JSON 格式。
@@ -1434,21 +1569,24 @@ async function callAIAPI(sentence) {
 - 如果句子有文化背景或政治/商务语境，一定要在"深层理解"中展开`;
 
   try {
-    const response = await fetch(settings.baseUrl + '/chat/completions', {
+    // 如果没有传 signal，使用默认 120 秒超时
+    const fetchSignal = signal || AbortSignal.timeout(120000);
+
+    const response = await fetch(config.baseUrl + '/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + settings.apiKey
+        'Authorization': 'Bearer ' + config.apiKey
       },
       body: JSON.stringify({
-        model: settings.model,
+        model: config.model,
         messages: [
           { role: 'system', content: '你是一位资深的英语教师，擅长用中文逐层拆解英语句子，帮助学生深入理解语法、搭配、语感和文化背景。请始终返回合法的 JSON 格式。' },
           { role: 'user', content: prompt }
         ],
         temperature: 0.3
       }),
-      signal: AbortSignal.timeout(120000)
+      signal: fetchSignal
     });
 
     if (!response.ok) {
@@ -1469,6 +1607,7 @@ async function callAIAPI(sentence) {
     const result = JSON.parse(jsonStr);
     return result;
   } catch (e) {
+    if (e.name === 'AbortError') throw e; // 向上抛出，让调用方处理
     if (e.name === 'TimeoutError') {
       return { error: 'AI 请求超时，请稍后重试' };
     }
@@ -1476,150 +1615,37 @@ async function callAIAPI(sentence) {
   }
 }
 
-// =====================================================================
-// AI API 流式调用（OpenAI 兼容格式，streaming）
-// =====================================================================
-async function callAIAPIStream(sentence, onChunk, signal) {
-  const settings = getAISettings();
-  if (!settings.apiKey || !settings.baseUrl) {
-    return { error: '请先在设置中配置 AI API Key' };
-  }
+// 多配置自动降级调用
+async function callAIAPIWithFallback(sentence, signal) {
+  const configs = getAISettings(); // 返回数组
+  if (!configs || configs.length === 0) return { error: 'not_configured' };
 
-  const prompt = `你是一位资深的英语教师，正在帮中国学生深度理解一句英语。请像老师讲解一样，逐层拆解这句话，返回 JSON 格式。
-
-句子：${sentence}
-
-请返回以下 JSON 结构（不要加 markdown 代码块标记，直接返回纯 JSON）：
-{
-  "translation": "简短自然的中文翻译",
-  "literalTranslation": "字面翻译（逐词直译）",
-  "actualMeanings": ["实际意思1（口语化）", "实际意思2", "实际意思3"],
-  "expressionNote": "关于这个表达是否为固定搭配/习语的说明",
-  "sections": [
-    {
-      "title": "一、句子结构分析",
-      "markdown": "逐词拆解表格 + 主语/谓语/否定/介词短语的分别讲解。使用 markdown 格式，支持：表格(|col|col|)、加粗(**text**)、列表(- item)、分隔线(---)"
-    },
-    {
-      "title": "二、固定搭配辨析",
-      "markdown": "对比容易混淆的搭配（如 ask vs ask for），用 ❌ 和 ✅ 标注错误和正确用法，解释为什么"
-    },
-    {
-      "title": "三、时态分析",
-      "markdown": "解释为什么用这个时态，对比如果换用其他时态含义会有什么变化"
-    },
-    {
-      "title": "四、母语者语感",
-      "markdown": "英语母语者在什么场景下说这句话，类似中文的什么表达，给出2-3个变体用法"
-    },
-    {
-      "title": "五、深层理解",
-      "markdown": "这句话在政治剧/商务谈判等具体语境中的潜台词和言外之意"
-    },
-    {
-      "title": "六、语法知识点总结",
-      "markdown": "编号列出本句包含的核心语法知识点，每个知识点给出公式和2-3个举一反三的例句"
-    }
-  ]
-}
-
-要求：
-- actualMeanings 至少给2-3个口语化的翻译，让中国学生真正理解语感
-- 每个section的markdown内容要详细、有深度，像老师讲课一样娓娓道来
-- 不要泛泛而谈，要针对这句话的具体词汇和结构来讲解
-- 对比分析很重要：要讲"为什么用A而不用B"，这种辨析对中国学生最有帮助
-- 如果句子有文化背景或政治/商务语境，一定要在"深层理解"中展开`;
-
-  try {
-    const response = await fetch(settings.baseUrl + '/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + settings.apiKey
-      },
-      body: JSON.stringify({
-        model: settings.model,
-        messages: [
-          { role: 'system', content: '你是一位资深的英语教师，擅长用中文逐层拆解英语句子，帮助学生深入理解语法、搭配、语感和文化背景。请始终返回合法的 JSON 格式。' },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.3,
-        stream: true
-      }),
-      signal: signal
-    });
-
-    if (!response.ok) {
-      const errText = await response.text().catch(() => '');
-      return { error: `API 请求失败 (${response.status}): ${errText.slice(0, 200)}` };
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let fullText = '';
-    let buffer = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop(); // 保留最后一行（可能不完整）
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed || trimmed === 'data: [DONE]') continue;
-        if (!trimmed.startsWith('data: ')) continue;
-
-        try {
-          const json = JSON.parse(trimmed.slice(6));
-          const delta = json.choices?.[0]?.delta?.content || '';
-          if (delta) {
-            fullText += delta;
-            onChunk(fullText);
-          }
-        } catch (e) {
-          // 忽略解析错误，继续处理下一行
-        }
-      }
-    }
-
-    // 尝试解析完整 JSON
-    let jsonStr = fullText.trim();
-    const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (jsonMatch) jsonStr = jsonMatch[1].trim();
-
+  let lastError = null;
+  for (const config of configs) {
+    if (!config.apiKey || !config.baseUrl) continue;
     try {
-      const result = JSON.parse(jsonStr);
+      const result = await callAIAPIWithConfig(config, sentence, signal);
+      if (!result.error) return result;
+      lastError = result;
+      // 如果是 503/429，尝试下一个配置
+      if (result.error && (result.error.includes('503') || result.error.includes('429'))) {
+        console.log(`[AI] ${config.name} 不可用，尝试下一个...`);
+        continue;
+      }
+      // 其他错误直接返回
       return result;
-    } catch (parseErr) {
-      return { error: 'AI 返回内容无法解析为 JSON，请重试' };
+    } catch (e) {
+      if (e.name === 'AbortError') throw e;
+      lastError = { error: `${config.name} 调用失败: ${e.message}` };
+      continue;
     }
-  } catch (e) {
-    if (e.name === 'AbortError') throw e; // 向上抛出，让 loadAIExplanation 处理
-    if (e.name === 'TimeoutError') return { error: 'AI 请求超时，请稍后重试' };
-    return { error: `AI 调用失败: ${e.message}` };
   }
+  return lastError || { error: '所有 AI 配置均不可用' };
 }
 
 // =====================================================================
-// 流式输出显示更新
+// （流式调用已移除，改用非流式 + 多配置降级）
 // =====================================================================
-function updateStreamingDisplay(partialText) {
-  const container = document.getElementById('ai-explanation-container');
-  if (!container) return;
-
-  container.innerHTML = `
-    <div class="rounded-lg p-4 mt-4 fade-in" style="background:var(--bg-secondary);border:1px solid var(--border)">
-      <div class="flex items-center gap-2 mb-3">
-        <span class="text-sm font-semibold" style="color:var(--text-secondary)">🤖 AI 深度解析</span>
-        <span class="text-xs loading-pulse" style="color:var(--accent)">生成中...</span>
-      </div>
-      <div class="text-sm leading-relaxed" style="color:var(--text-secondary);white-space:pre-wrap;word-break:break-word;font-family:monospace;background:var(--bg-tertiary);padding:12px;border-radius:8px;max-height:400px;overflow-y:auto">${escapeHtml(partialText)}<span class="ai-streaming-cursor">▌</span></div>
-    </div>
-  `;
-}
 
 // =====================================================================
 // 获取 AI 解释（带缓存）
@@ -1640,8 +1666,8 @@ async function getAIExplanation(sentence) {
     return { error: 'not_configured' };
   }
 
-  // 调用 API
-  const result = await callAIAPI(sentence);
+  // 调用 API（多配置降级）
+  const result = await callAIAPIWithFallback(sentence);
 
   // 缓存结果（包括错误结果，避免反复重试，但错误结果 5 分钟后过期）
   if (!result.error) {
@@ -1958,7 +1984,7 @@ function updateAISectionForCurrentSubtitle() {
 }
 
 // =====================================================================
-// 加载 AI 解释（异步，不阻塞主分析渲染，支持流式输出）
+// 加载 AI 解释（异步，不阻塞主分析渲染，非流式调用 + 多配置降级）
 // =====================================================================
 async function loadAIExplanation(sentence) {
   const containerId = 'ai-explanation-container';
@@ -1966,9 +1992,7 @@ async function loadAIExplanation(sentence) {
   if (!container) return;
 
   // abort 之前的请求
-  if (aiAbortController) {
-    aiAbortController.abort();
-  }
+  if (aiAbortController) aiAbortController.abort();
   aiAbortController = new AbortController();
   const currentController = aiAbortController;
 
@@ -1976,11 +2000,9 @@ async function loadAIExplanation(sentence) {
   container.innerHTML = renderAISkeleton();
 
   // 等待预生成数据加载完成
-  if (aiPreloadPromise) {
-    await aiPreloadPromise;
-  }
+  if (aiPreloadPromise) await aiPreloadPromise;
 
-  // 检查缓存（预生成数据直接渲染，不需要流式）
+  // 检查缓存
   if (aiExplanationCache[sentence]) {
     container.innerHTML = renderAIExplanation(sentence, aiExplanationCache[sentence]);
     return;
@@ -1992,21 +2014,13 @@ async function loadAIExplanation(sentence) {
     return;
   }
 
-  // 流式调用
+  // 非流式调用（带多配置降级）
   try {
-    const result = await callAIAPIStream(sentence, (partialText) => {
-      // 如果已经切换了句子，不更新
-      if (aiAbortController !== currentController) return;
-      // 更新流式输出显示
-      updateStreamingDisplay(partialText);
-    }, currentController.signal);
-
-    // 如果已经切换了句子，不更新最终结果
+    const result = await callAIAPIWithFallback(sentence, currentController.signal);
+    // 如果已经切换了句子，不更新
     if (aiAbortController !== currentController) return;
 
-    if (!result.error) {
-      aiExplanationCache[sentence] = result;
-    }
+    if (!result.error) aiExplanationCache[sentence] = result;
     container.innerHTML = renderAIExplanation(sentence, result);
   } catch (e) {
     if (e.name === 'AbortError') return; // 用户切换了句子，静默
