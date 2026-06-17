@@ -1,0 +1,2674 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SRT 字幕分析器</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  /* ===== 基础样式 ===== */
+  :root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8f9fa;
+    --bg-tertiary: #f1f3f5;
+    --bg-hover: #e9ecef;
+    --text-primary: #212529;
+    --text-secondary: #495057;
+    --text-muted: #868e96;
+    --accent: #4c6ef5;
+    --accent-hover: #5c7cfa;
+    --border: #dee2e6;
+    --noun: #3b82f6;
+    --verb: #ef4444;
+    --adj: #16a34a;
+    --adv: #ea580c;
+    --prep: #9333ea;
+    --other: #6b7280;
+    --subject: #3b82f6;
+    --predicate: #ef4444;
+    --object: #16a34a;
+    --modifier: #9333ea;
+    --clause: #d97706;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    min-height: 100vh;
+  }
+
+  /* ===== 滚动条美化（浅色主题适配） ===== */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg-tertiary); }
+  ::-webkit-scrollbar-thumb { background: #ced4da; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #adb5bd; }
+
+  /* ===== 上传区域 ===== */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    transition: all 0.3s ease;
+    cursor: pointer;
+  }
+  .upload-zone:hover,
+  .upload-zone.dragover {
+    border-color: var(--accent);
+    background: rgba(76, 110, 245, 0.06);
+  }
+
+  /* ===== 字幕列表项 ===== */
+  .subtitle-item {
+    transition: all 0.2s ease;
+    border-left: 3px solid transparent;
+    cursor: pointer;
+  }
+  .subtitle-item:hover {
+    background: var(--bg-hover);
+  }
+  .subtitle-item.active {
+    background: var(--bg-tertiary);
+    border-left-color: var(--accent);
+  }
+
+  /* ===== 词性颜色标签 ===== */
+  .pos-noun { color: var(--noun); border-bottom: 2px solid var(--noun); }
+  .pos-verb { color: var(--verb); border-bottom: 2px solid var(--verb); }
+  .pos-adj { color: var(--adj); border-bottom: 2px solid var(--adj); }
+  .pos-adv { color: var(--adv); border-bottom: 2px solid var(--adv); }
+  .pos-prep { color: var(--prep); border-bottom: 2px solid var(--prep); }
+  .pos-other { color: var(--other); border-bottom: 2px solid var(--other); }
+
+  /* ===== 语法成分颜色（浅色主题下降低透明度，避免过于刺眼） ===== */
+  .gram-subject { background: rgba(96, 165, 250, 0.12); border-bottom: 2px solid var(--subject); }
+  .gram-predicate { background: rgba(248, 113, 113, 0.12); border-bottom: 2px solid var(--predicate); }
+  .gram-object { background: rgba(74, 222, 128, 0.12); border-bottom: 2px solid var(--object); }
+  .gram-modifier { background: rgba(192, 132, 252, 0.12); border-bottom: 2px solid var(--modifier); }
+  .gram-clause { background: rgba(251, 191, 36, 0.12); border-bottom: 2px solid var(--clause); }
+
+  /* ===== 单词弹窗（浅色主题：白色背景，浅阴影） ===== */
+  .word-tooltip {
+    position: absolute;
+    z-index: 50;
+    background: #ffffff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    min-width: 200px;
+    max-width: 320px;
+    max-height: 400px;
+    overflow-y: auto;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    pointer-events: auto;
+  }
+
+  /* ===== 标签样式 ===== */
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  /* ===== 动画 ===== */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .fade-in { animation: fadeIn 0.3s ease; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  .loading-pulse { animation: pulse 1.5s infinite; }
+
+  /* ===== 骨架屏动画 ===== */
+  @keyframes shimmer {
+    0% { background-position: -400px 0; }
+    100% { background-position: 400px 0; }
+  }
+  .skeleton {
+    background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-hover) 50%, var(--bg-tertiary) 75%);
+    background-size: 800px 100%;
+    animation: shimmer 1.5s infinite linear;
+    border-radius: 6px;
+  }
+  .skeleton-line { height: 16px; margin-bottom: 8px; }
+  .skeleton-line.w-3_4 { width: 75%; }
+  .skeleton-line.w-1_2 { width: 50%; }
+  .skeleton-line.w-2_3 { width: 66%; }
+  .skeleton-line.w-1_3 { width: 33%; }
+  .skeleton-block { height: 80px; margin-bottom: 12px; }
+
+  /* ===== 设置模态框 ===== */
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(0,0,0,0.4);
+    display: flex; align-items: center; justify-content: center;
+    backdrop-filter: blur(2px);
+  }
+  .modal-content {
+    background: var(--bg-primary);
+    border-radius: 16px;
+    padding: 28px;
+    width: 90%; max-width: 480px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+  }
+  .modal-content input[type="text"],
+  .modal-content input[type="password"] {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .modal-content input:focus {
+    border-color: var(--accent);
+  }
+
+  /* ===== AI Tab 切换 ===== */
+  .ai-tabs {
+    display: flex; gap: 2px;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    padding: 3px;
+  }
+  .ai-tab {
+    flex: 1;
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text-muted);
+    border: none;
+    background: transparent;
+  }
+  .ai-tab:hover {
+    color: var(--text-secondary);
+    background: var(--bg-hover);
+  }
+  .ai-tab.active {
+    background: var(--bg-primary);
+    color: var(--accent);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .ai-tab-content {
+    display: none;
+    padding: 12px 0;
+  }
+  .ai-tab-content.active {
+    display: block;
+  }
+
+  /* ===== AI 表达/词汇卡片 ===== */
+  .ai-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+  }
+  .ai-card-title {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+  }
+  .ai-card-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+  .ai-card-example {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-style: italic;
+    margin-top: 4px;
+    padding-left: 8px;
+    border-left: 2px solid var(--accent);
+  }
+  .ai-word-family {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    margin-top: 4px;
+  }
+  .ai-word-family span {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    background: rgba(76,110,245,0.08);
+    color: var(--accent);
+  }
+
+  /* ===== AI 深度解释样式 ===== */
+  .ai-section-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+  .ai-section-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text-primary);
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s;
+  }
+  .ai-section-title:hover {
+    background: var(--bg-tertiary);
+  }
+  .ai-section-title .toggle-icon {
+    font-size: 12px;
+    color: var(--text-muted);
+    transition: transform 0.2s;
+  }
+  .ai-section-title .toggle-icon.collapsed {
+    transform: rotate(-90deg);
+  }
+  .ai-section-body {
+    padding: 0 14px 12px 14px;
+  }
+  .ai-section-body.collapsed {
+    display: none;
+  }
+  .ai-meaning-item {
+    padding: 3px 0;
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+  .ai-expression-note {
+    background: rgba(76,110,245,0.06);
+    border: 1px solid rgba(76,110,245,0.15);
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin-bottom: 10px;
+    font-size: 13px;
+    color: var(--accent);
+    line-height: 1.5;
+  }
+  .ai-md-content {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+  }
+  .ai-md-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 8px 0;
+    font-size: 13px;
+  }
+  .ai-md-content th {
+    background: var(--bg-tertiary);
+    font-weight: 600;
+    text-align: left;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+  }
+  .ai-md-content td {
+    padding: 5px 10px;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+  }
+  .ai-md-content ul, .ai-md-content ol {
+    padding-left: 20px;
+    margin: 4px 0;
+  }
+  .ai-md-content li {
+    margin: 3px 0;
+  }
+  .ai-md-content code {
+    background: var(--bg-tertiary);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: var(--accent);
+  }
+  .ai-md-content hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 10px 0;
+  }
+  .ai-md-content strong {
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+
+  /* ===== 响应式 ===== */
+  @media (max-width: 768px) {
+    .main-layout {
+      flex-direction: column !important;
+    }
+    .subtitle-panel, .analysis-panel {
+      width: 100% !important;
+      max-height: 50vh !important;
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== 顶部栏 ===== -->
+<header class="sticky top-0 z-40" style="background:var(--bg-secondary);border-bottom:1px solid var(--border)">
+  <div class="max-w-screen-2xl mx-auto px-4 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <svg class="w-7 h-7" fill="none" stroke="var(--accent)" stroke-width="2" viewBox="0 0 24 24">
+        <path d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/>
+      </svg>
+      <h1 class="text-lg font-bold" style="color:var(--text-primary)">SRT 字幕分析器</h1>
+    </div>
+    <!-- 统计信息 -->
+    <div id="stats" class="hidden flex items-center gap-4 text-sm" style="color:var(--text-secondary)">
+      <span>📝 总句数: <strong id="stat-sentences" style="color:var(--text-primary)">0</strong></span>
+      <span>🔤 总词数: <strong id="stat-words" style="color:var(--text-primary)">0</strong></span>
+      <span>💡 独立词数: <strong id="stat-unique" style="color:var(--text-primary)">0</strong></span>
+    </div>
+    <!-- 操作按钮 -->
+    <div class="flex items-center gap-2">
+      <button id="btn-upload-new" class="hidden px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+        style="background:var(--bg-tertiary);color:var(--text-secondary)"
+        onmouseover="this.style.background='var(--bg-hover)'"
+        onmouseout="this.style.background='var(--bg-tertiary)'"
+        onclick="resetApp()">
+        📂 重新上传
+      </button>
+      <button id="btn-export" class="hidden px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+        style="background:var(--accent);color:white"
+        onmouseover="this.style.background='var(--accent-hover)'"
+        onmouseout="this.style.background='var(--accent)'"
+        onclick="exportJSON()">
+        📤 导出分析
+      </button>
+      <!-- AI 设置按钮 -->
+      <button id="btn-settings" class="px-2.5 py-1.5 rounded-lg text-sm font-medium transition-colors"
+        style="background:var(--bg-tertiary);color:var(--text-secondary)"
+        onmouseover="this.style.background='var(--bg-hover)'"
+        onmouseout="this.style.background='var(--bg-tertiary)'"
+        onclick="openSettingsModal()"
+        title="AI 设置">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 010 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 010-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.281z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- ===== 上传页面 ===== -->
+<div id="upload-page" class="flex items-center justify-center" style="min-height:calc(100vh - 56px)">
+  <div class="text-center px-4">
+    <div id="drop-zone" class="upload-zone rounded-2xl p-16 mx-auto max-w-lg"
+      style="background:var(--bg-secondary)">
+      <svg class="mx-auto mb-4 w-16 h-16" fill="none" stroke="var(--accent)" stroke-width="1.5" viewBox="0 0 24 24">
+        <path d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
+      </svg>
+      <p class="text-lg font-semibold mb-2" style="color:var(--text-primary)">拖拽 SRT 文件到此处</p>
+      <p class="text-sm mb-4" style="color:var(--text-muted)">或点击选择文件</p>
+      <input type="file" id="file-input" accept=".srt" class="hidden">
+      <button onclick="document.getElementById('file-input').click()"
+        class="px-6 py-2 rounded-lg text-sm font-medium transition-colors"
+        style="background:var(--accent);color:white">
+        选择文件
+      </button>
+    </div>
+    <p class="mt-4 text-xs" style="color:var(--text-muted)">支持标准 SRT 格式 · 纯前端处理 · 数据不上传服务器</p>
+  </div>
+</div>
+
+<!-- ===== 分析主界面 ===== -->
+<div id="main-page" class="hidden" style="height:calc(100vh - 56px)">
+  <div class="main-layout flex h-full">
+    <!-- 左侧：字幕列表 -->
+    <div class="subtitle-panel flex flex-col" style="width:40%;border-right:1px solid var(--border)">
+      <div class="px-4 py-3 flex items-center gap-2" style="border-bottom:1px solid var(--border);background:var(--bg-secondary)">
+        <span class="text-sm font-medium" style="color:var(--text-secondary)">字幕列表</span>
+        <input id="search-input" type="text" placeholder="搜索字幕..."
+          class="px-3 py-1 rounded-lg text-sm outline-none flex-1"
+          style="background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border)"
+          oninput="filterSubtitles(this.value)">
+        <button id="btn-filter-fav" onclick="toggleFavFilter()" class="px-2 py-1 rounded-lg text-sm transition-colors" title="只看收藏"
+          style="background:var(--bg-tertiary);color:var(--text-muted);border:1px solid var(--border)"
+          onmouseover="this.style.background='var(--bg-hover)'"
+          onmouseout="this.style.background=this.classList.contains('active')?'rgba(239,68,68,0.1)':'var(--bg-tertiary)'">
+          <svg class="w-4 h-4 inline-block" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke="currentColor">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+          </svg>
+          <span class="ml-0.5">收藏</span>
+        </button>
+      </div>
+      <div id="subtitle-list" class="flex-1 overflow-y-auto">
+        <!-- 字幕项动态生成 -->
+      </div>
+    </div>
+
+    <!-- 右侧：分析面板 -->
+    <div class="analysis-panel flex-1 flex flex-col overflow-hidden">
+      <div id="analysis-placeholder" class="flex-1 flex items-center justify-center" style="color:var(--text-muted)">
+        <div class="text-center">
+          <svg class="mx-auto mb-3 w-12 h-12 opacity-40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <path d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
+          </svg>
+          <p>点击左侧字幕查看详细分析</p>
+        </div>
+      </div>
+      <div id="analysis-content" class="hidden flex-1 overflow-y-auto p-6">
+        <!-- 分析内容动态生成 -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 单词详情浮层 ===== -->
+<div id="word-tooltip" class="word-tooltip hidden" style="top:0;left:0"></div>
+
+<!-- ===== AI 设置模态框 ===== -->
+<div id="settings-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeSettingsModal()">
+  <div class="modal-content fade-in">
+    <div class="flex items-center justify-between mb-5">
+      <h3 class="text-lg font-bold" style="color:var(--text-primary)">⚙️ AI 设置</h3>
+      <button onclick="closeSettingsModal()" class="p-1 rounded-lg transition-colors"
+        style="color:var(--text-muted)"
+        onmouseover="this.style.color='var(--text-primary)'"
+        onmouseout="this.style.color='var(--text-muted)'">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <p class="text-sm mb-4" style="color:var(--text-secondary)">配置 AI API 以启用逐句解释与扩展功能。支持任何 OpenAI 兼容接口。</p>
+    <div class="mb-4">
+      <label class="block text-sm font-medium mb-1.5" style="color:var(--text-primary)">API Base URL</label>
+      <input id="settings-base-url" type="text" placeholder="https://api.deepseek.com/v1" value="">
+      <p class="text-xs mt-1" style="color:var(--text-muted)">OpenAI / DeepSeek / Moonshot / 其他兼容接口</p>
+    </div>
+    <div class="mb-5">
+      <label class="block text-sm font-medium mb-1.5" style="color:var(--text-primary)">API Key</label>
+      <input id="settings-api-key" type="password" placeholder="sk-..." value="">
+      <p class="text-xs mt-1" style="color:var(--text-muted)">密钥仅保存在本地浏览器，不会上传</p>
+    </div>
+    <div class="mb-5">
+      <label class="block text-sm font-medium mb-1.5" style="color:var(--text-primary)">模型名称</label>
+      <input id="settings-model" type="text" placeholder="deepseek-chat" value="">
+      <p class="text-xs mt-1" style="color:var(--text-muted)">留空则使用默认模型 deepseek-chat</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <button onclick="saveSettings()" class="flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+        style="background:var(--accent);color:white"
+        onmouseover="this.style.background='var(--accent-hover)'"
+        onmouseout="this.style.background='var(--accent)'">
+        保存设置
+      </button>
+      <button onclick="closeSettingsModal()" class="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+        style="background:var(--bg-tertiary);color:var(--text-secondary)"
+        onmouseover="this.style.background='var(--bg-hover)'"
+        onmouseout="this.style.background='var(--bg-tertiary)'">
+        取消
+      </button>
+    </div>
+    <div id="settings-status" class="mt-3 text-sm hidden" style="color:var(--accent)"></div>
+  </div>
+</div>
+
+<script>
+// =====================================================================
+// 全局状态
+// =====================================================================
+let subtitles = [];        // 解析后的字幕数组
+let currentIdx = -1;       // 当前选中索引
+let dictCache = {};        // Free Dictionary API 缓存
+let youdaoCache = {};    // 有道词典中文翻译缓存
+let analysisCache = {};    // 逐词分析缓存 { sentenceKey: wordAnalysis[] }
+let grammarCache = {};     // 语法分析缓存
+let aiExplanationCache = {}; // AI 解释缓存 { sentence: { translation, grammar, expressions, vocabulary } }
+let aiPreloadPromise = null; // 预生成数据加载 Promise
+let aiLoadingState = false;  // AI 是否正在加载
+let favFilterActive = false; // 收藏过滤是否激活
+
+// ===== 收藏功能 =====
+const FAV_KEY = 'srt_favorites';
+
+function getFavorites() {
+  try {
+    const raw = localStorage.getItem(FAV_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch(e) { return []; }
+}
+
+function saveFavorites(favs) {
+  localStorage.setItem(FAV_KEY, JSON.stringify(favs));
+}
+
+function isFavorite(idx) {
+  return getFavorites().includes(idx);
+}
+
+function toggleFavorite() {
+  if (currentIdx < 0) return;
+  const favs = getFavorites();
+  const pos = favs.indexOf(currentIdx);
+  if (pos >= 0) {
+    favs.splice(pos, 1);
+  } else {
+    favs.push(currentIdx);
+  }
+  saveFavorites(favs);
+  updateFavIcon();
+  renderSubtitleList(document.getElementById('search-input').value);
+}
+
+function updateFavIcon() {
+  const icon = document.getElementById('fav-icon');
+  const btn = document.getElementById('btn-favorite');
+  if (!icon || !btn) return;
+  const fav = isFavorite(currentIdx);
+  if (fav) {
+    icon.setAttribute('fill', '#ef4444');
+    icon.setAttribute('stroke', '#ef4444');
+    btn.style.color = '#ef4444';
+  } else {
+    icon.setAttribute('fill', 'none');
+    icon.setAttribute('stroke', 'currentColor');
+    btn.style.color = 'var(--text-muted)';
+  }
+}
+
+function toggleFavFilter() {
+  favFilterActive = !favFilterActive;
+  const btn = document.getElementById('btn-filter-fav');
+  if (favFilterActive) {
+    btn.classList.add('active');
+    btn.style.background = 'rgba(239,68,68,0.1)';
+    btn.style.color = '#ef4444';
+    btn.style.borderColor = 'rgba(239,68,68,0.3)';
+    // 更新心形图标为实心
+    const svg = btn.querySelector('svg');
+    if (svg) svg.setAttribute('fill', '#ef4444');
+  } else {
+    btn.classList.remove('active');
+    btn.style.background = 'var(--bg-tertiary)';
+    btn.style.color = 'var(--text-muted)';
+    btn.style.borderColor = 'var(--border)';
+    const svg = btn.querySelector('svg');
+    if (svg) svg.setAttribute('fill', 'none');
+  }
+  renderSubtitleList(document.getElementById('search-input').value);
+}
+
+// =====================================================================
+// AI 设置管理（localStorage 持久化）
+// =====================================================================
+const AI_SETTINGS_KEY = 'srt_analyzer_ai_settings';
+
+function getAISettings() {
+  try {
+    const raw = localStorage.getItem(AI_SETTINGS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return { baseUrl: 'https://api.deepseek.com/v1', apiKey: '', model: 'deepseek-chat' };
+}
+
+function isAIConfigured() {
+  const settings = getAISettings();
+  return !!(settings.apiKey && settings.baseUrl);
+}
+
+function openSettingsModal() {
+  const settings = getAISettings();
+  document.getElementById('settings-base-url').value = settings.baseUrl || 'https://api.deepseek.com/v1';
+  document.getElementById('settings-api-key').value = settings.apiKey || '';
+  document.getElementById('settings-model').value = settings.model || 'deepseek-chat';
+  document.getElementById('settings-status').classList.add('hidden');
+  document.getElementById('settings-modal').classList.remove('hidden');
+}
+
+function closeSettingsModal() {
+  document.getElementById('settings-modal').classList.add('hidden');
+}
+
+function saveSettings() {
+  const baseUrl = document.getElementById('settings-base-url').value.trim().replace(/\/+$/, '');
+  const apiKey = document.getElementById('settings-api-key').value.trim();
+  const model = document.getElementById('settings-model').value.trim() || 'gpt-4o-mini';
+
+  if (!baseUrl) {
+    showSettingsStatus('请填写 API Base URL', true);
+    return;
+  }
+  if (!apiKey) {
+    showSettingsStatus('请填写 API Key', true);
+    return;
+  }
+
+  localStorage.setItem(AI_SETTINGS_KEY, JSON.stringify({ baseUrl, apiKey, model }));
+  showSettingsStatus('✅ 设置已保存', false);
+  // 更新当前面板的 AI 提示
+  updateAISectionForCurrentSubtitle();
+  setTimeout(() => closeSettingsModal(), 800);
+}
+
+function showSettingsStatus(msg, isError) {
+  const el = document.getElementById('settings-status');
+  el.textContent = msg;
+  el.style.color = isError ? '#ef4444' : 'var(--accent)';
+  el.classList.remove('hidden');
+}
+
+// =====================================================================
+// AI API 调用（OpenAI 兼容格式）
+// =====================================================================
+async function callAIAPI(sentence) {
+  const settings = getAISettings();
+  if (!settings.apiKey || !settings.baseUrl) {
+    return { error: '请先在设置中配置 AI API Key' };
+  }
+
+  const prompt = `你是一位资深的英语教师，正在帮中国学生深度理解一句英语。请像老师讲解一样，逐层拆解这句话，返回 JSON 格式。
+
+句子：${sentence}
+
+请返回以下 JSON 结构（不要加 markdown 代码块标记，直接返回纯 JSON）：
+{
+  "translation": "简短自然的中文翻译",
+  "literalTranslation": "字面翻译（逐词直译）",
+  "actualMeanings": ["实际意思1（口语化）", "实际意思2", "实际意思3"],
+  "expressionNote": "关于这个表达是否为固定搭配/习语的说明",
+  "sections": [
+    {
+      "title": "一、句子结构分析",
+      "markdown": "逐词拆解表格 + 主语/谓语/否定/介词短语的分别讲解。使用 markdown 格式，支持：表格(|col|col|)、加粗(**text**)、列表(- item)、分隔线(---)"
+    },
+    {
+      "title": "二、固定搭配辨析",
+      "markdown": "对比容易混淆的搭配（如 ask vs ask for），用 ❌ 和 ✅ 标注错误和正确用法，解释为什么"
+    },
+    {
+      "title": "三、时态分析",
+      "markdown": "解释为什么用这个时态，对比如果换用其他时态含义会有什么变化"
+    },
+    {
+      "title": "四、母语者语感",
+      "markdown": "英语母语者在什么场景下说这句话，类似中文的什么表达，给出2-3个变体用法"
+    },
+    {
+      "title": "五、深层理解",
+      "markdown": "这句话在政治剧/商务谈判等具体语境中的潜台词和言外之意"
+    },
+    {
+      "title": "六、语法知识点总结",
+      "markdown": "编号列出本句包含的核心语法知识点，每个知识点给出公式和2-3个举一反三的例句"
+    }
+  ]
+}
+
+要求：
+- actualMeanings 至少给2-3个口语化的翻译，让中国学生真正理解语感
+- 每个section的markdown内容要详细、有深度，像老师讲课一样娓娓道来
+- 不要泛泛而谈，要针对这句话的具体词汇和结构来讲解
+- 对比分析很重要：要讲"为什么用A而不用B"，这种辨析对中国学生最有帮助
+- 如果句子有文化背景或政治/商务语境，一定要在"深层理解"中展开`;
+
+  try {
+    const response = await fetch(settings.baseUrl + '/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + settings.apiKey
+      },
+      body: JSON.stringify({
+        model: settings.model,
+        messages: [
+          { role: 'system', content: '你是一位资深的英语教师，擅长用中文逐层拆解英语句子，帮助学生深入理解语法、搭配、语感和文化背景。请始终返回合法的 JSON 格式。' },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.3
+      }),
+      signal: AbortSignal.timeout(30000)
+    });
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => '');
+      return { error: `API 请求失败 (${response.status}): ${errText.slice(0, 200)}` };
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || '';
+
+    // 尝试解析 JSON（兼容 markdown 代码块包裹的情况）
+    let jsonStr = content.trim();
+    const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (jsonMatch) {
+      jsonStr = jsonMatch[1].trim();
+    }
+
+    const result = JSON.parse(jsonStr);
+    return result;
+  } catch (e) {
+    if (e.name === 'TimeoutError') {
+      return { error: 'AI 请求超时，请稍后重试' };
+    }
+    return { error: `AI 调用失败: ${e.message}` };
+  }
+}
+
+// =====================================================================
+// 获取 AI 解释（带缓存）
+// =====================================================================
+async function getAIExplanation(sentence) {
+  // 等待预生成数据加载完成（避免竞态：数据还没加载完就返回 not_configured）
+  if (aiPreloadPromise) {
+    await aiPreloadPromise;
+  }
+
+  // 检查缓存（优先使用预生成数据或之前的结果）
+  if (aiExplanationCache[sentence]) {
+    return aiExplanationCache[sentence];
+  }
+
+  // 没有缓存且未配置 API → 返回提示
+  if (!isAIConfigured()) {
+    return { error: 'not_configured' };
+  }
+
+  // 调用 API
+  const result = await callAIAPI(sentence);
+
+  // 缓存结果（包括错误结果，避免反复重试，但错误结果 5 分钟后过期）
+  if (!result.error) {
+    aiExplanationCache[sentence] = result;
+  }
+  return result;
+}
+
+// =====================================================================
+// 渲染 AI 解释区域骨架屏
+// =====================================================================
+function renderAISkeleton() {
+  return `
+    <div class="rounded-lg p-4 mt-4 fade-in" style="background:var(--bg-secondary);border:1px solid var(--border)">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-sm font-semibold" style="color:var(--text-secondary)">🤖 AI 解释与扩展</span>
+        <span class="text-xs loading-pulse" style="color:var(--accent)">加载中...</span>
+      </div>
+      <div class="ai-tabs mb-2">
+      </div>
+      <div class="p-2">
+        <div class="skeleton skeleton-line w-3_4"></div>
+        <div class="skeleton skeleton-line w-1_2"></div>
+        <div class="skeleton skeleton-line w-2_3"></div>
+        <div class="skeleton skeleton-block"></div>
+      </div>
+    </div>
+  `;
+}
+
+// =====================================================================
+// 简易 Markdown 渲染
+// =====================================================================
+function renderMD(text) {
+  if (!text) return '';
+  let html = text;
+
+  // 转义 HTML（保留 emoji 和特殊字符）
+  html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  // 表格：处理 | col | col | 格式
+  const tableRegex = /((?:^\|.*\|$\n?)+)/gm;
+  html = html.replace(tableRegex, (match) => {
+    const rows = match.trim().split('\n').filter(r => r.trim());
+    if (rows.length < 2) return match;
+    let tableHtml = '<table>';
+    rows.forEach((row, idx) => {
+      // 跳过分隔行（如 |---|---|）
+      if (/^\|[\s\-:|]+\|$/.test(row.trim())) return;
+      const cells = row.split('|').filter((c, i, arr) => i > 0 && i < arr.length - 1);
+      const tag = idx === 0 ? 'th' : 'td';
+      tableHtml += '<tr>' + cells.map(c => `<${tag}>${c.trim()}</${tag}>`).join('') + '</tr>';
+    });
+    tableHtml += '</table>';
+    return tableHtml;
+  });
+
+  // 分隔线
+  html = html.replace(/^(---|⸻)\s*$/gm, '<hr>');
+
+  // 有序列表：1. item
+  html = html.replace(/(^|\n)((?:\d+\.\s+.+\n?)+)/g, (match, prefix, listBlock) => {
+    const items = listBlock.trim().split('\n').map(line => {
+      const m = line.match(/^\d+\.\s+(.*)/);
+      return m ? `<li>${m[1]}</li>` : '';
+    }).join('');
+    return `${prefix}<ol>${items}</ol>`;
+  });
+
+  // 无序列表：- item 或 * item
+  html = html.replace(/(^|\n)((?:[-*]\s+.+\n?)+)/g, (match, prefix, listBlock) => {
+    const items = listBlock.trim().split('\n').map(line => {
+      const m = line.match(/^[-*]\s+(.*)/);
+      return m ? `<li>${m[1]}</li>` : '';
+    }).join('');
+    return `${prefix}<ul>${items}</ul>`;
+  });
+
+  // 行内代码：`code`
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+  // 加粗：**text**
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+
+  // 换行
+  html = html.replace(/\n/g, '<br>');
+
+  return html;
+}
+
+// =====================================================================
+// 渲染 AI 解释区域完整内容
+// =====================================================================
+function renderAIExplanation(sentence, data) {
+  if (!data) return '';
+
+  // 错误状态
+  if (data.error) {
+    if (data.error === 'not_configured') {
+      const hasPreloaded = Object.keys(aiExplanationCache).length > 0;
+      const hint = hasPreloaded
+        ? '当前句暂无预生成解释。如需覆盖所有句子，可在设置中配置 API Key。'
+        : '请先在设置中配置 AI API Key，或上传内置预生成解释的字幕文件。';
+      return `
+        <div class="rounded-lg p-4 mt-4 fade-in" style="background:var(--bg-secondary);border:1px solid var(--border)">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="text-sm font-semibold" style="color:var(--text-secondary)">🤖 AI 解释与扩展</span>
+          </div>
+          <div class="text-center py-6">
+            <svg class="mx-auto mb-3 w-10 h-10 opacity-30" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z"/>
+            </svg>
+            <p class="text-sm" style="color:var(--text-muted)">${hint}</p>
+            <button onclick="openSettingsModal()" class="mt-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
+              style="background:var(--accent);color:white"
+              onmouseover="this.style.background='var(--accent-hover)'"
+              onmouseout="this.style.background='var(--accent)'">
+              前往设置
+            </button>
+          </div>
+        </div>
+      `;
+    }
+    return `
+      <div class="rounded-lg p-4 mt-4 fade-in" style="background:var(--bg-secondary);border:1px solid var(--border)">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="text-sm font-semibold" style="color:var(--text-secondary)">🤖 AI 解释与扩展</span>
+        </div>
+        <div class="text-center py-4">
+          <p class="text-sm" style="color:#ef4444">⚠️ ${escapeHtml(data.error)}</p>
+          <button onclick="retryAIExplanation()" class="mt-2 px-3 py-1 rounded-lg text-xs font-medium transition-colors"
+            style="background:var(--bg-tertiary);color:var(--text-secondary)"
+            onmouseover="this.style.background='var(--bg-hover)'"
+            onmouseout="this.style.background='var(--bg-tertiary)'">
+            🔄 重试
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  // ===== 正常渲染 =====
+  // 兼容旧格式数据
+  let sections = data.sections;
+  let translation = data.translation || '';
+  let literalTranslation = data.literalTranslation || '';
+  let actualMeanings = data.actualMeanings || [];
+  let expressionNote = data.expressionNote || '';
+
+  if (!sections || sections.length === 0) {
+    // 旧格式A：knowledgePoints 数组
+    if (data.knowledgePoints && data.knowledgePoints.length > 0) {
+      sections = data.knowledgePoints.map(kp => ({
+        title: kp.title || '知识点',
+        markdown: (kp.content || '') + (kp.example ? '\n\n例句：' + kp.example : '')
+      }));
+      if (!translation) translation = data.translation || '';
+      if (!literalTranslation) literalTranslation = translation;
+      if (actualMeanings.length === 0) actualMeanings = translation ? [translation] : [];
+    }
+    // 旧格式B：grammar/expressions/vocabulary
+    else if (data.grammar || data.expressions || data.vocabulary) {
+      sections = [];
+      if (data.grammar) {
+        sections.push({ title: '📊 语法解析', markdown: data.grammar });
+      }
+      if (data.expressions && data.expressions.length > 0) {
+        data.expressions.forEach(expr => {
+          sections.push({ title: '💡 ' + (expr.phrase || ''), markdown: (expr.explanation || '') + (expr.example ? '\n\n例句：' + expr.example : '') });
+        });
+      }
+      if (data.vocabulary && data.vocabulary.length > 0) {
+        data.vocabulary.forEach(v => {
+          let content = '';
+          if (v.synonyms && v.synonyms.length) content += '同义: ' + v.synonyms.join(', ') + '  ';
+          if (v.antonyms && v.antonyms.length) content += '反义: ' + v.antonyms.join(', ') + '  ';
+          if (v.wordFamily && v.wordFamily.length) content += '词族: ' + v.wordFamily.join(', ');
+          sections.push({ title: '📖 ' + (v.word || ''), markdown: content });
+        });
+      }
+      if (!translation) translation = data.translation || '';
+      if (!literalTranslation) literalTranslation = translation;
+      if (actualMeanings.length === 0) actualMeanings = translation ? [translation] : [];
+    }
+  }
+
+  // 顶部：原句
+  let topHTML = `
+    <div style="font-size:18px;font-weight:700;color:var(--text-primary);margin-bottom:10px;line-height:1.5;">
+      ${escapeHtml(sentence)}
+    </div>
+  `;
+
+  // 字面翻译
+  if (literalTranslation) {
+    topHTML += `
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:6px;">
+        📖 字面翻译：${escapeHtml(literalTranslation)}
+      </div>
+    `;
+  }
+
+  // 实际意思列表
+  if (actualMeanings.length > 0) {
+    topHTML += `
+      <div style="margin-bottom:8px;">
+        ${actualMeanings.map(m => `<div class="ai-meaning-item">👉 ${escapeHtml(m)}</div>`).join('')}
+      </div>
+    `;
+  }
+
+  // 固定表达提示
+  if (expressionNote) {
+    topHTML += `
+      <div class="ai-expression-note">💡 ${escapeHtml(expressionNote)}</div>
+    `;
+  }
+
+  // Section 卡片
+  let sectionsHTML = '';
+  if (sections && sections.length > 0) {
+    sectionsHTML = sections.map((sec, idx) => {
+      const sectionId = 'ai-section-' + idx;
+      return `
+        <div class="ai-section-card">
+          <div class="ai-section-title" onclick="toggleAISection('${sectionId}')">
+            <span>${escapeHtml(sec.title || '')}</span>
+            <span class="toggle-icon" id="${sectionId}-icon">▼</span>
+          </div>
+          <div class="ai-section-body" id="${sectionId}">
+            <div class="ai-md-content">${renderMD(sec.markdown || '')}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  } else {
+    sectionsHTML = '<div class="text-sm py-4 text-center" style="color:var(--text-muted)">暂无详细解析</div>';
+  }
+
+  return `
+    <div class="rounded-lg p-4 mt-4 fade-in" style="background:var(--bg-secondary);border:1px solid var(--border)" id="ai-explanation-section">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-sm font-semibold" style="color:var(--text-secondary)">🤖 AI 深度解析</span>
+        <button onclick="retryAIExplanation()" class="p-1 rounded transition-colors" title="重新生成"
+          style="color:var(--text-muted)"
+          onmouseover="this.style.color='var(--accent)'"
+          onmouseout="this.style.color='var(--text-muted)'">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182"/>
+          </svg>
+        </button>
+      </div>
+      ${topHTML}
+      ${sectionsHTML}
+    </div>
+  `;
+}
+
+// =====================================================================
+// AI Tab 切换（已移除，保留空函数以防报错）
+// =====================================================================
+function switchAITab(tabName) { }
+
+// =====================================================================
+// AI Section 展开/收起
+// =====================================================================
+function toggleAISection(sectionId) {
+  const body = document.getElementById(sectionId);
+  const icon = document.getElementById(sectionId + '-icon');
+  if (!body || !icon) return;
+  if (body.classList.contains('collapsed')) {
+    body.classList.remove('collapsed');
+    icon.classList.remove('collapsed');
+  } else {
+    body.classList.add('collapsed');
+    icon.classList.add('collapsed');
+  }
+}
+
+// =====================================================================
+// 重试 AI 解释
+// =====================================================================
+async function retryAIExplanation() {
+  if (currentIdx < 0 || !subtitles[currentIdx]) return;
+  const sentence = subtitles[currentIdx].text;
+  // 清除缓存
+  delete aiExplanationCache[sentence];
+  // 重新加载
+  await loadAIExplanation(sentence);
+}
+
+// =====================================================================
+// 更新当前面板的 AI 区域（设置变更后调用）
+// =====================================================================
+function updateAISectionForCurrentSubtitle() {
+  if (currentIdx < 0 || !subtitles[currentIdx]) return;
+  const sentence = subtitles[currentIdx].text;
+  // 如果缓存有结果则重渲染，否则显示未配置提示
+  const aiSection = document.getElementById('ai-explanation-section');
+  if (aiSection) {
+    const cached = aiExplanationCache[sentence];
+    if (cached) {
+      aiSection.outerHTML = renderAIExplanation(sentence, cached);
+    } else {
+      // 显示未配置提示
+      aiSection.outerHTML = renderAIExplanation(sentence, { error: 'not_configured' });
+    }
+  }
+}
+
+// =====================================================================
+// 加载 AI 解释（异步，不阻塞主分析渲染）
+// =====================================================================
+async function loadAIExplanation(sentence) {
+  const containerId = 'ai-explanation-container';
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  // 显示骨架屏
+  container.innerHTML = renderAISkeleton();
+
+  // 异步获取
+  const result = await getAIExplanation(sentence);
+  container.innerHTML = renderAIExplanation(sentence, result);
+}
+
+// =====================================================================
+// 内置迷你词典：常见词 → { lemma, pos, zh }
+// 覆盖高频词以加速分析、减少 API 调用
+// =====================================================================
+const MINI_DICT = {
+  // 冠词
+  "a":{lemma:"a",pos:"det",zh:"一个", def:"indefinite article"}, "an":{lemma:"an",pos:"det",zh:"一个", def:"indefinite article"},
+  "the":{lemma:"the",pos:"det",zh:"这个/那个", def:"definite article"},
+  // 代词
+  "i":{lemma:"I",pos:"pron",zh:"我", def:"first person pronoun"}, "me":{lemma:"I",pos:"pron",zh:"我", def:"object form of I"},
+  "my":{lemma:"my",pos:"pron",zh:"我的", def:"possessive of I"}, "mine":{lemma:"mine",pos:"pron",zh:"我的", def:"possessive pronoun of I"},
+  "you":{lemma:"you",pos:"pron",zh:"你", def:"second person pronoun"}, "your":{lemma:"your",pos:"pron",zh:"你的", def:"possessive of you"},
+  "yours":{lemma:"yours",pos:"pron",zh:"你的", def:"possessive pronoun of you"}, "he":{lemma:"he",pos:"pron",zh:"他", def:"third person male pronoun"},
+  "him":{lemma:"he",pos:"pron",zh:"他", def:"object form of he"}, "his":{lemma:"his",pos:"pron",zh:"他的", def:"possessive of he"},
+  "she":{lemma:"she",pos:"pron",zh:"她", def:"third person female pronoun"}, "her":{lemma:"she",pos:"pron",zh:"她/她的", def:"object/possessive of she"},
+  "it":{lemma:"it",pos:"pron",zh:"它", def:"third person neutral pronoun"}, "its":{lemma:"its",pos:"pron",zh:"它的", def:"possessive of it"},
+  "we":{lemma:"we",pos:"pron",zh:"我们", def:"first person plural pronoun"}, "us":{lemma:"we",pos:"pron",zh:"我们", def:"object form of we"},
+  "our":{lemma:"our",pos:"pron",zh:"我们的", def:"possessive of we"}, "they":{lemma:"they",pos:"pron",zh:"他们", def:"third person plural pronoun"},
+  "them":{lemma:"they",pos:"pron",zh:"他们", def:"object form of they"}, "their":{lemma:"their",pos:"pron",zh:"他们的", def:"possessive of they"},
+  "this":{lemma:"this",pos:"pron",zh:"这个", def:"demonstrative pronoun"}, "that":{lemma:"that",pos:"pron",zh:"那个", def:"demonstrative pronoun"},
+  "these":{lemma:"these",pos:"pron",zh:"这些", def:"plural of this"}, "those":{lemma:"those",pos:"pron",zh:"那些", def:"plural of that"},
+  "who":{lemma:"who",pos:"pron",zh:"谁", def:"interrogative/relative pronoun"}, "whom":{lemma:"whom",pos:"pron",zh:"谁", def:"object form of who"},
+  "which":{lemma:"which",pos:"pron",zh:"哪个", def:"interrogative/relative pronoun"}, "what":{lemma:"what",pos:"pron",zh:"什么", def:"interrogative pronoun"},
+  // 动词 be
+  "is":{lemma:"be",pos:"verb",zh:"是", def:"present tense of be"}, "am":{lemma:"be",pos:"verb",zh:"是", def:"present tense of be (1st person)"},
+  "are":{lemma:"be",pos:"verb",zh:"是", def:"present tense of be (plural)"}, "was":{lemma:"be",pos:"verb",zh:"是(过去)", def:"past tense of be"},
+  "were":{lemma:"be",pos:"verb",zh:"是(过去)", def:"past tense of be (plural)"}, "been":{lemma:"be",pos:"verb",zh:"是(过去分词)", def:"past participle of be"},
+  "being":{lemma:"be",pos:"verb",zh:"正在", def:"present participle of be"},
+  // 助动词
+  "have":{lemma:"have",pos:"verb",zh:"有", def:"to possess"}, "has":{lemma:"have",pos:"verb",zh:"有", def:"third person of have"},
+  "had":{lemma:"have",pos:"verb",zh:"有(过去)", def:"past tense of have"}, "having":{lemma:"have",pos:"verb",zh:"拥有", def:"present participle of have"},
+  "do":{lemma:"do",pos:"verb",zh:"做", def:"to perform an action"}, "does":{lemma:"do",pos:"verb",zh:"做", def:"third person of do"},
+  "did":{lemma:"do",pos:"verb",zh:"做(过去)", def:"past tense of do"}, "doing":{lemma:"do",pos:"verb",zh:"正在做", def:"present participle of do"},
+  "done":{lemma:"do",pos:"verb",zh:"做完", def:"past participle of do"},
+  "will":{lemma:"will",pos:"verb",zh:"将要", def:"expressing future"}, "would":{lemma:"would",pos:"verb",zh:"将会", def:"past of will"},
+  "shall":{lemma:"shall",pos:"verb",zh:"将要", def:"expressing future intention"}, "should":{lemma:"should",pos:"verb",zh:"应该", def:"ought to"},
+  "can":{lemma:"can",pos:"verb",zh:"能", def:"to be able to"}, "could":{lemma:"could",pos:"verb",zh:"能够", def:"past of can"},
+  "may":{lemma:"may",pos:"verb",zh:"可能", def:"expressing possibility"}, "might":{lemma:"might",pos:"verb",zh:"可能", def:"past of may"},
+  "must":{lemma:"must",pos:"verb",zh:"必须", def:"to be obliged to"},
+  // 常见动词
+  "go":{lemma:"go",pos:"verb",zh:"去", def:"to move from one place to another"}, "goes":{lemma:"go",pos:"verb",zh:"去", def:"third person of go"},
+  "went":{lemma:"go",pos:"verb",zh:"去(过去)", def:"past tense of go"}, "gone":{lemma:"go",pos:"verb",zh:"去(过去分词)", def:"past participle of go"},
+  "going":{lemma:"go",pos:"verb",zh:"去(现在分词)", def:"present participle of go"},
+  "come":{lemma:"come",pos:"verb",zh:"来", def:"to move toward"}, "came":{lemma:"come",pos:"verb",zh:"来(过去)", def:"past tense of come"},
+  "get":{lemma:"get",pos:"verb",zh:"得到", def:"to obtain or receive"}, "got":{lemma:"get",pos:"verb",zh:"得到(过去)", def:"past tense of get"},
+  "make":{lemma:"make",pos:"verb",zh:"制作", def:"to create or produce"}, "made":{lemma:"make",pos:"verb",zh:"制作(过去)", def:"past tense of make"},
+  "take":{lemma:"take",pos:"verb",zh:"拿", def:"to seize or capture"}, "took":{lemma:"take",pos:"verb",zh:"拿(过去)", def:"past tense of take"},
+  "taken":{lemma:"take",pos:"verb",zh:"拿(过去分词)", def:"past participle of take"},
+  "know":{lemma:"know",pos:"verb",zh:"知道", def:"to have knowledge of"}, "knew":{lemma:"know",pos:"verb",zh:"知道(过去)", def:"past tense of know"},
+  "known":{lemma:"know",pos:"verb",zh:"知道(过去分词)", def:"past participle of know"},
+  "think":{lemma:"think",pos:"verb",zh:"想", def:"to use the mind"}, "thought":{lemma:"think",pos:"verb",zh:"想(过去)", def:"past tense of think"},
+  "see":{lemma:"see",pos:"verb",zh:"看见", def:"to perceive with the eyes"}, "saw":{lemma:"see",pos:"verb",zh:"看见(过去)", def:"past tense of see"},
+  "seen":{lemma:"see",pos:"verb",zh:"看见(过去分词)", def:"past participle of see"},
+  "say":{lemma:"say",pos:"verb",zh:"说", def:"to utter words"}, "said":{lemma:"say",pos:"verb",zh:"说(过去)", def:"past tense of say"},
+  "tell":{lemma:"tell",pos:"verb",zh:"告诉", def:"to communicate to"}, "told":{lemma:"tell",pos:"verb",zh:"告诉(过去)", def:"past tense of tell"},
+  "want":{lemma:"want",pos:"verb",zh:"想要", def:"to desire"}, "need":{lemma:"need",pos:"verb",zh:"需要", def:"to require"},
+  "give":{lemma:"give",pos:"verb",zh:"给", def:"to present voluntarily"}, "gave":{lemma:"give",pos:"verb",zh:"给(过去)", def:"past tense of give"},
+  "find":{lemma:"find",pos:"verb",zh:"找到", def:"to discover"}, "found":{lemma:"find",pos:"verb",zh:"找到(过去)", def:"past tense of find"},
+  "use":{lemma:"use",pos:"verb",zh:"使用", def:"to employ for a purpose"}, "used":{lemma:"use",pos:"verb",zh:"使用(过去)", def:"past tense of use"},
+  "try":{lemma:"try",pos:"verb",zh:"尝试", def:"to make an attempt"}, "tried":{lemma:"try",pos:"verb",zh:"尝试(过去)", def:"past tense of try"},
+  "ask":{lemma:"ask",pos:"verb",zh:"问", def:"to inquire"}, "asked":{lemma:"ask",pos:"verb",zh:"问(过去)", def:"past tense of ask"},
+  "look":{lemma:"look",pos:"verb",zh:"看", def:"to direct the eyes"}, "looked":{lemma:"look",pos:"verb",zh:"看(过去)", def:"past tense of look"},
+  "feel":{lemma:"feel",pos:"verb",zh:"感觉", def:"to perceive by touch"}, "felt":{lemma:"feel",pos:"verb",zh:"感觉(过去)", def:"past tense of feel"},
+  "work":{lemma:"work",pos:"verb",zh:"工作", def:"effort directed to a purpose"}, "call":{lemma:"call",pos:"verb",zh:"叫/打电话", def:"to cry out or phone"},
+  "keep":{lemma:"keep",pos:"verb",zh:"保持", def:"to retain"}, "let":{lemma:"let",pos:"verb",zh:"让", def:"to allow"},
+  "begin":{lemma:"begin",pos:"verb",zh:"开始", def:"to start"}, "began":{lemma:"begin",pos:"verb",zh:"开始(过去)", def:"past tense of begin"},
+  "show":{lemma:"show",pos:"verb",zh:"展示", def:"to display"}, "showed":{lemma:"show",pos:"verb",zh:"展示(过去)", def:"past tense of show"},
+  "hear":{lemma:"hear",pos:"verb",zh:"听见", def:"to perceive by ear"}, "heard":{lemma:"hear",pos:"verb",zh:"听见(过去)", def:"past tense of hear"},
+  "play":{lemma:"play",pos:"verb",zh:"玩/播放", def:"to engage in amusement"}, "run":{lemma:"run",pos:"verb",zh:"跑", def:"to move swiftly on foot"},
+  "ran":{lemma:"run",pos:"verb",zh:"跑(过去)", def:"past tense of run"},
+  "move":{lemma:"move",pos:"verb",zh:"移动", def:"to change position"}, "live":{lemma:"live",pos:"verb",zh:"住/活", def:"to be alive; to reside"},
+  "believe":{lemma:"believe",pos:"verb",zh:"相信", def:"to accept as true"}, "bring":{lemma:"bring",pos:"verb",zh:"带来", def:"to carry toward"},
+  "happen":{lemma:"happen",pos:"verb",zh:"发生", def:"to occur"}, "write":{lemma:"write",pos:"verb",zh:"写", def:"to form letters"},
+  "sit":{lemma:"sit",pos:"verb",zh:"坐", def:"to rest on a seat"}, "stand":{lemma:"stand",pos:"verb",zh:"站", def:"to be upright"},
+  "lose":{lemma:"lose",pos:"verb",zh:"丢失", def:"to be deprived of"}, "pay":{lemma:"pay",pos:"verb",zh:"支付", def:"to give money for"},
+  "meet":{lemma:"meet",pos:"verb",zh:"遇见", def:"to encounter"}, "include":{lemma:"include",pos:"verb",zh:"包括", def:"to contain as a part"},
+  "continue":{lemma:"continue",pos:"verb",zh:"继续", def:"to go on"}, "set":{lemma:"set",pos:"verb",zh:"设置", def:"to put in position"},
+  "learn":{lemma:"learn",pos:"verb",zh:"学习", def:"to acquire knowledge"}, "change":{lemma:"change",pos:"verb",zh:"改变", def:"the act of becoming different"},
+  "lead":{lemma:"lead",pos:"verb",zh:"领导", def:"to guide"}, "understand":{lemma:"understand",pos:"verb",zh:"理解", def:"to comprehend"},
+  "watch":{lemma:"watch",pos:"verb",zh:"观看", def:"to look at attentively"}, "follow":{lemma:"follow",pos:"verb",zh:"跟随", def:"to go after"},
+  "stop":{lemma:"stop",pos:"verb",zh:"停止", def:"to cease moving"}, "create":{lemma:"create",pos:"verb",zh:"创造", def:"to bring into being"},
+  "speak":{lemma:"speak",pos:"verb",zh:"说", def:"to talk"}, "read":{lemma:"read",pos:"verb",zh:"读", def:"to interpret written words"},
+  "spend":{lemma:"spend",pos:"verb",zh:"花费", def:"to use up"}, "grow":{lemma:"grow",pos:"verb",zh:"成长", def:"to increase in size"},
+  "open":{lemma:"open",pos:"verb",zh:"打开", def:"not closed"}, "walk":{lemma:"walk",pos:"verb",zh:"走", def:"to move on foot"},
+  "win":{lemma:"win",pos:"verb",zh:"赢", def:"to be victorious"}, "offer":{lemma:"offer",pos:"verb",zh:"提供", def:"to present for acceptance"},
+  "remember":{lemma:"remember",pos:"verb",zh:"记住", def:"to recall"}, "love":{lemma:"love",pos:"verb",zh:"爱", def:"to feel deep affection"},
+  "consider":{lemma:"consider",pos:"verb",zh:"考虑", def:"to think carefully"}, "appear":{lemma:"appear",pos:"verb",zh:"出现", def:"to come into sight"},
+  "buy":{lemma:"buy",pos:"verb",zh:"买", def:"to purchase"}, "wait":{lemma:"wait",pos:"verb",zh:"等待", def:"to stay in expectation"},
+  "serve":{lemma:"serve",pos:"verb",zh:"服务", def:"to be of use"}, "die":{lemma:"die",pos:"verb",zh:"死", def:"to cease living"},
+  "send":{lemma:"send",pos:"verb",zh:"发送", def:"to dispatch"}, "expect":{lemma:"expect",pos:"verb",zh:"期待", def:"to look forward to"},
+  "build":{lemma:"build",pos:"verb",zh:"建造", def:"to construct"}, "stay":{lemma:"stay",pos:"verb",zh:"停留", def:"to remain"},
+  "fall":{lemma:"fall",pos:"verb",zh:"落下", def:"to drop down"}, "cut":{lemma:"cut",pos:"verb",zh:"切", def:"to divide with a blade"},
+  "reach":{lemma:"reach",pos:"verb",zh:"到达", def:"to arrive at"}, "kill":{lemma:"kill",pos:"verb",zh:"杀", def:"to cause death"},
+  "remain":{lemma:"remain",pos:"verb",zh:"保持", def:"to stay behind"}, "suggest":{lemma:"suggest",pos:"verb",zh:"建议", def:"to propose"},
+  "raise":{lemma:"raise",pos:"verb",zh:"举起/养育", def:"to lift up"}, "pass":{lemma:"pass",pos:"verb",zh:"通过", def:"to go by"},
+  "sell":{lemma:"sell",pos:"verb",zh:"卖", def:"to exchange for money"}, "require":{lemma:"require",pos:"verb",zh:"要求", def:"to need"},
+  "report":{lemma:"report",pos:"verb",zh:"报告", def:"to give an account"}, "decide":{lemma:"decide",pos:"verb",zh:"决定", def:"to make a choice"},
+  "pull":{lemma:"pull",pos:"verb",zh:"拉", def:"to draw toward"}, "fight":{lemma:"fight",pos:"verb",zh:"战斗", def:"to combat"},
+  "fly":{lemma:"fly",pos:"verb",zh:"飞", def:"to move through the air"}, "hit":{lemma:"hit",pos:"verb",zh:"打", def:"to strike"},
+  "pick":{lemma:"pick",pos:"verb",zh:"挑选", def:"to select"}, "wear":{lemma:"wear",pos:"verb",zh:"穿", def:"to have on the body"},
+  "carry":{lemma:"carry",pos:"verb",zh:"携带", def:"to transport"}, "hold":{lemma:"hold",pos:"verb",zh:"握住", def:"to grasp"},
+  "break":{lemma:"break",pos:"verb",zh:"打破", def:"to separate into pieces"}, "catch":{lemma:"catch",pos:"verb",zh:"抓住", def:"to seize"},
+  "throw":{lemma:"throw",pos:"verb",zh:"扔", def:"to propel through the air"}, "turn":{lemma:"turn",pos:"verb",zh:"转", def:"to rotate"},
+  "talk":{lemma:"talk",pos:"verb",zh:"谈话", def:"to converse"}, "start":{lemma:"start",pos:"verb",zh:"开始", def:"to begin"},
+  "help":{lemma:"help",pos:"verb",zh:"帮助", def:"to assist"}, "put":{lemma:"put",pos:"verb",zh:"放", def:"to place"},
+  "leave":{lemma:"leave",pos:"verb",zh:"离开", def:"to go away from"}, "mean":{lemma:"mean",pos:"verb",zh:"意味着", def:"to signify"},
+  "eat":{lemma:"eat",pos:"verb",zh:"吃", def:"to consume food"}, "ate":{lemma:"eat",pos:"verb",zh:"吃(过去)", def:"past tense of eat"},
+  "drink":{lemma:"drink",pos:"verb",zh:"喝", def:"to take in liquid"}, "sleep":{lemma:"sleep",pos:"verb",zh:"睡觉", def:"to rest in sleep"},
+  "drive":{lemma:"drive",pos:"verb",zh:"驾驶", def:"to operate a vehicle"}, "ride":{lemma:"ride",pos:"verb",zh:"骑", def:"to travel on"},
+  "sing":{lemma:"sing",pos:"verb",zh:"唱", def:"to produce musical sounds"}, "draw":{lemma:"draw",pos:"verb",zh:"画", def:"to make a picture"},
+  // 常见名词
+  "time":{lemma:"time",pos:"noun",zh:"时间", def:"the indefinite continued progress"}, "year":{lemma:"year",pos:"noun",zh:"年", def:"a period of 365 days"},
+  "people":{lemma:"people",pos:"noun",zh:"人们", def:"human beings"}, "way":{lemma:"way",pos:"noun",zh:"方式/路", def:"a method or path"},
+  "day":{lemma:"day",pos:"noun",zh:"天", def:"a period of 24 hours"}, "man":{lemma:"man",pos:"noun",zh:"男人", def:"an adult male"},
+  "woman":{lemma:"woman",pos:"noun",zh:"女人", def:"an adult female"}, "child":{lemma:"child",pos:"noun",zh:"孩子", def:"a young human"},
+  "children":{lemma:"child",pos:"noun",zh:"孩子们", def:"plural of child"}, "world":{lemma:"world",pos:"noun",zh:"世界", def:"the earth and its inhabitants"},
+  "life":{lemma:"life",pos:"noun",zh:"生活/生命", def:"the condition of living"}, "hand":{lemma:"hand",pos:"noun",zh:"手", def:"the end part of the arm"},
+  "part":{lemma:"part",pos:"noun",zh:"部分", def:"a piece of a whole"}, "place":{lemma:"place",pos:"noun",zh:"地方", def:"a location"},
+  "case":{lemma:"case",pos:"noun",zh:"情况/箱子", def:"an instance or container"}, "week":{lemma:"week",pos:"noun",zh:"周", def:"a period of 7 days"},
+  "company":{lemma:"company",pos:"noun",zh:"公司", def:"a business organization"}, "system":{lemma:"system",pos:"noun",zh:"系统", def:"a set of connected things"},
+  "program":{lemma:"program",pos:"noun",zh:"程序/节目", def:"a planned series of events"}, "question":{lemma:"question",pos:"noun",zh:"问题", def:"an inquiry"},
+  "work":{lemma:"work",pos:"noun",zh:"工作", def:"effort directed to a purpose"}, "government":{lemma:"government",pos:"noun",zh:"政府", def:"the governing body"},
+  "number":{lemma:"number",pos:"noun",zh:"数字", def:"a mathematical value"}, "night":{lemma:"night",pos:"noun",zh:"夜晚", def:"the dark period of a day"},
+  "point":{lemma:"point",pos:"noun",zh:"点", def:"a specific location or idea"}, "home":{lemma:"home",pos:"noun",zh:"家", def:"one's dwelling place"},
+  "water":{lemma:"water",pos:"noun",zh:"水", def:"a clear liquid"}, "room":{lemma:"room",pos:"noun",zh:"房间", def:"a space in a building"},
+  "mother":{lemma:"mother",pos:"noun",zh:"母亲", def:"a female parent"}, "area":{lemma:"area",pos:"noun",zh:"区域", def:"a region or zone"},
+  "money":{lemma:"money",pos:"noun",zh:"钱", def:"currency"}, "story":{lemma:"story",pos:"noun",zh:"故事", def:"a narrative"},
+  "fact":{lemma:"fact",pos:"noun",zh:"事实", def:"something known to be true"}, "month":{lemma:"month",pos:"noun",zh:"月", def:"one of twelve divisions of a year"},
+  "lot":{lemma:"lot",pos:"noun",zh:"许多", def:"a large amount"}, "right":{lemma:"right",pos:"noun",zh:"权利/右边", def:"correct"},
+  "study":{lemma:"study",pos:"noun",zh:"研究", def:"the act of learning"}, "book":{lemma:"book",pos:"noun",zh:"书", def:"a written work"},
+  "eye":{lemma:"eye",pos:"noun",zh:"眼睛", def:"the organ of sight"}, "job":{lemma:"job",pos:"noun",zh:"工作", def:"a paid position"},
+  "word":{lemma:"word",pos:"noun",zh:"词", def:"a unit of language"}, "business":{lemma:"business",pos:"noun",zh:"商业", def:"commercial activity"},
+  "issue":{lemma:"issue",pos:"noun",zh:"问题", def:"a problem or topic"}, "side":{lemma:"side",pos:"noun",zh:"边", def:"a position to the left or right"},
+  "kind":{lemma:"kind",pos:"noun",zh:"种类", def:"a type or sort"}, "head":{lemma:"head",pos:"noun",zh:"头", def:"the top part of the body"},
+  "house":{lemma:"house",pos:"noun",zh:"房子", def:"a building for living"}, "service":{lemma:"service",pos:"noun",zh:"服务", def:"an act of assistance"},
+  "friend":{lemma:"friend",pos:"noun",zh:"朋友", def:"a person you know well"}, "father":{lemma:"father",pos:"noun",zh:"父亲", def:"a male parent"},
+  "power":{lemma:"power",pos:"noun",zh:"力量", def:"the ability to do something"}, "hour":{lemma:"hour",pos:"noun",zh:"小时", def:"a period of 60 minutes"},
+  "game":{lemma:"game",pos:"noun",zh:"游戏", def:"an activity for amusement"}, "line":{lemma:"line",pos:"noun",zh:"线", def:"a long narrow mark"},
+  "end":{lemma:"end",pos:"noun",zh:"结束", def:"the final part"}, "member":{lemma:"member",pos:"noun",zh:"成员", def:"a person in a group"},
+  "law":{lemma:"law",pos:"noun",zh:"法律", def:"a rule of conduct"}, "car":{lemma:"car",pos:"noun",zh:"车", def:"an automobile"},
+  "city":{lemma:"city",pos:"noun",zh:"城市", def:"a large town"}, "community":{lemma:"community",pos:"noun",zh:"社区", def:"a group of people living together"},
+  "name":{lemma:"name",pos:"noun",zh:"名字", def:"a word by which someone is known"}, "president":{lemma:"president",pos:"noun",zh:"总统", def:"the head of state"},
+  "team":{lemma:"team",pos:"noun",zh:"团队", def:"a group working together"}, "minute":{lemma:"minute",pos:"noun",zh:"分钟", def:"a period of 60 seconds"},
+  "idea":{lemma:"idea",pos:"noun",zh:"想法", def:"a thought or plan"}, "body":{lemma:"body",pos:"noun",zh:"身体", def:"the physical structure"},
+  "information":{lemma:"information",pos:"noun",zh:"信息", def:"knowledge or facts"}, "back":{lemma:"back",pos:"noun",zh:"背部", def:"toward the rear"},
+  "parent":{lemma:"parent",pos:"noun",zh:"父母", def:"a mother or father"}, "face":{lemma:"face",pos:"noun",zh:"脸", def:"the front of the head"},
+  "others":{lemma:"others",pos:"noun",zh:"其他人", def:"other people"}, "level":{lemma:"level",pos:"noun",zh:"水平", def:"a position on a scale"},
+  "office":{lemma:"office",pos:"noun",zh:"办公室", def:"a place for work"}, "door":{lemma:"door",pos:"noun",zh:"门", def:"a movable barrier"},
+  "health":{lemma:"health",pos:"noun",zh:"健康", def:"the state of being well"}, "person":{lemma:"person",pos:"noun",zh:"人", def:"a human being"},
+  "art":{lemma:"art",pos:"noun",zh:"艺术", def:"creative expression"}, "war":{lemma:"war",pos:"noun",zh:"战争", def:"armed conflict"},
+  "history":{lemma:"history",pos:"noun",zh:"历史", def:"the study of past events"}, "party":{lemma:"party",pos:"noun",zh:"派对/政党", def:"a social gathering or political group"},
+  "result":{lemma:"result",pos:"noun",zh:"结果", def:"an outcome"}, "change":{lemma:"change",pos:"noun",zh:"变化", def:"the act of becoming different"},
+  "morning":{lemma:"morning",pos:"noun",zh:"早上", def:"the early part of the day"}, "reason":{lemma:"reason",pos:"noun",zh:"原因", def:"a cause or explanation"},
+  "research":{lemma:"research",pos:"noun",zh:"研究", def:"systematic investigation"}, "girl":{lemma:"girl",pos:"noun",zh:"女孩", def:"a female child"},
+  "guy":{lemma:"guy",pos:"noun",zh:"家伙", def:"a man or boy"}, "moment":{lemma:"moment",pos:"noun",zh:"时刻", def:"a brief period of time"},
+  "air":{lemma:"air",pos:"noun",zh:"空气", def:"the mixture of gases we breathe"}, "teacher":{lemma:"teacher",pos:"noun",zh:"老师", def:"one who teaches"},
+  "force":{lemma:"force",pos:"noun",zh:"力量", def:"strength or power"}, "education":{lemma:"education",pos:"noun",zh:"教育", def:"the process of learning"},
+  "foot":{lemma:"foot",pos:"noun",zh:"脚", def:"the part of the leg below the ankle"}, "boy":{lemma:"boy",pos:"noun",zh:"男孩", def:"a male child"},
+  "age":{lemma:"age",pos:"noun",zh:"年龄", def:"the length of time one has lived"}, "policy":{lemma:"policy",pos:"noun",zh:"政策", def:"a plan of action"},
+  "process":{lemma:"process",pos:"noun",zh:"过程", def:"a series of actions"}, "music":{lemma:"music",pos:"noun",zh:"音乐", def:"organized sound"},
+  "market":{lemma:"market",pos:"noun",zh:"市场", def:"a place for buying and selling"}, "sense":{lemma:"sense",pos:"noun",zh:"感觉", def:"a feeling or perception"},
+  "product":{lemma:"product",pos:"noun",zh:"产品", def:"something produced"}, "effect":{lemma:"effect",pos:"noun",zh:"效果", def:"a result or outcome"},
+  "class":{lemma:"class",pos:"noun",zh:"班级/阶级", def:"a group of students or a category"}, "piece":{lemma:"piece",pos:"noun",zh:"片/块", def:"a part of something"},
+  "land":{lemma:"land",pos:"noun",zh:"土地", def:"the surface of the earth"}, "problem":{lemma:"problem",pos:"noun",zh:"问题", def:"a difficulty"},
+  "situation":{lemma:"situation",pos:"noun",zh:"情况", def:"a set of circumstances"}, "experience":{lemma:"experience",pos:"noun",zh:"经验", def:"knowledge gained by doing"},
+  "example":{lemma:"example",pos:"noun",zh:"例子", def:"a sample or model"}, "difference":{lemma:"difference",pos:"noun",zh:"区别", def:"the quality of being unlike"},
+  "language":{lemma:"language",pos:"noun",zh:"语言", def:"a system of communication"}, "school":{lemma:"school",pos:"noun",zh:"学校", def:"a place of learning"},
+  "family":{lemma:"family",pos:"noun",zh:"家庭", def:"parents and their children"}, "student":{lemma:"student",pos:"noun",zh:"学生", def:"one who studies"},
+  "group":{lemma:"group",pos:"noun",zh:"群/组", def:"a number of things together"}, "country":{lemma:"country",pos:"noun",zh:"国家", def:"a nation"},
+  // 常见形容词
+  "good":{lemma:"good",pos:"adj",zh:"好的", def:"of high quality"}, "new":{lemma:"new",pos:"adj",zh:"新的", def:"recently made or discovered"},
+  "first":{lemma:"first",pos:"adj",zh:"第一的", def:"coming before all others"}, "last":{lemma:"last",pos:"adj",zh:"最后的", def:"coming after all others"},
+  "long":{lemma:"long",pos:"adj",zh:"长的", def:"of great length"}, "great":{lemma:"great",pos:"adj",zh:"伟大的", def:"of large size or importance"},
+  "little":{lemma:"little",pos:"adj",zh:"小的", def:"small in size"}, "own":{lemma:"own",pos:"adj",zh:"自己的", def:"belonging to oneself"},
+  "other":{lemma:"other",pos:"adj",zh:"其他的", def:"different from the one mentioned"}, "old":{lemma:"old",pos:"adj",zh:"老的", def:"having lived a long time"},
+  "right":{lemma:"right",pos:"adj",zh:"正确的", def:"correct"}, "big":{lemma:"big",pos:"adj",zh:"大的", def:"of large size"},
+  "high":{lemma:"high",pos:"adj",zh:"高的", def:"of great height"}, "different":{lemma:"different",pos:"adj",zh:"不同的", def:"not the same"},
+  "small":{lemma:"small",pos:"adj",zh:"小的", def:"of limited size"}, "large":{lemma:"large",pos:"adj",zh:"大的", def:"of great size"},
+  "next":{lemma:"next",pos:"adj",zh:"下一个", def:"immediately following"}, "early":{lemma:"early",pos:"adj",zh:"早的", def:"before the usual time"},
+  "young":{lemma:"young",pos:"adj",zh:"年轻的", def:"in early life"}, "important":{lemma:"important",pos:"adj",zh:"重要的", def:"of great significance"},
+  "few":{lemma:"few",pos:"adj",zh:"少的", def:"not many"}, "public":{lemma:"public",pos:"adj",zh:"公共的", def:"relating to people in general"},
+  "bad":{lemma:"bad",pos:"adj",zh:"坏的", def:"of poor quality"}, "same":{lemma:"same",pos:"adj",zh:"相同的", def:"not different"},
+  "able":{lemma:"able",pos:"adj",zh:"能够的", def:"having the skill"}, "sure":{lemma:"sure",pos:"adj",zh:"确定的", def:"certain"},
+  "true":{lemma:"true",pos:"adj",zh:"真的", def:"in accordance with fact"}, "full":{lemma:"full",pos:"adj",zh:"满的", def:"containing all that can be held"},
+  "nice":{lemma:"nice",pos:"adj",zh:"好的", def:"pleasant"}, "best":{lemma:"best",pos:"adj",zh:"最好的", def:"of the highest quality"},
+  "better":{lemma:"better",pos:"adj",zh:"更好的", def:"more good"}, "simple":{lemma:"simple",pos:"adj",zh:"简单的", def:"easy to understand"},
+  "hard":{lemma:"hard",pos:"adj",zh:"困难的", def:"not easy; solid"}, "real":{lemma:"real",pos:"adj",zh:"真实的", def:"actually existing"},
+  "strong":{lemma:"strong",pos:"adj",zh:"强壮的", def:"having great power"}, "possible":{lemma:"possible",pos:"adj",zh:"可能的", def:"able to happen"},
+  "whole":{lemma:"whole",pos:"adj",zh:"整个的", def:"complete"}, "free":{lemma:"free",pos:"adj",zh:"自由的", def:"not costing anything"},
+  "happy":{lemma:"happy",pos:"adj",zh:"快乐的", def:"feeling pleasure"}, "serious":{lemma:"serious",pos:"adj",zh:"严肃的", def:"not joking"},
+  "ready":{lemma:"ready",pos:"adj",zh:"准备好的", def:"prepared"}, "beautiful":{lemma:"beautiful",pos:"adj",zh:"美丽的", def:"pleasing to the senses"},
+  "clear":{lemma:"clear",pos:"adj",zh:"清晰的", def:"easy to see through"}, "dark":{lemma:"dark",pos:"adj",zh:"黑暗的", def:"with little light"},
+  "white":{lemma:"white",pos:"adj",zh:"白色的", def:"of the color of snow"}, "black":{lemma:"black",pos:"adj",zh:"黑色的", def:"of the darkest color"},
+  "red":{lemma:"red",pos:"adj",zh:"红色的", def:"of the color of blood"}, "blue":{lemma:"blue",pos:"adj",zh:"蓝色的", def:"of the color of the sky"},
+  "green":{lemma:"green",pos:"adj",zh:"绿色的", def:"of the color of grass"}, "dead":{lemma:"dead",pos:"adj",zh:"死的", def:"no longer living"},
+  "certain":{lemma:"certain",pos:"adj",zh:"确定的", def:"sure; specific"}, "cold":{lemma:"cold",pos:"adj",zh:"冷的", def:"of low temperature"},
+  "hot":{lemma:"hot",pos:"adj",zh:"热的", def:"of high temperature"}, "afraid":{lemma:"afraid",pos:"adj",zh:"害怕的", def:"feeling fear"},
+  "alone":{lemma:"alone",pos:"adj",zh:"独自的", def:"without others"}, "human":{lemma:"human",pos:"adj",zh:"人类的", def:"relating to people"},
+  "local":{lemma:"local",pos:"adj",zh:"本地的", def:"relating to a particular area"}, "social":{lemma:"social",pos:"adj",zh:"社会的", def:"relating to society"},
+  "natural":{lemma:"natural",pos:"adj",zh:"自然的", def:"existing in nature"}, "political":{lemma:"political",pos:"adj",zh:"政治的", def:"relating to government"},
+  "wrong":{lemma:"wrong",pos:"adj",zh:"错误的", def:"not correct"}, "special":{lemma:"special",pos:"adj",zh:"特别的", def:"not ordinary"},
+  "recent":{lemma:"recent",pos:"adj",zh:"最近的", def:"having happened not long ago"}, "personal":{lemma:"personal",pos:"adj",zh:"个人的", def:"relating to a person"},
+  "open":{lemma:"open",pos:"adj",zh:"开放的", def:"not closed"}, "close":{lemma:"close",pos:"adj",zh:"近的", def:"near"},
+  "main":{lemma:"main",pos:"adj",zh:"主要的", def:"most important"}, "major":{lemma:"major",pos:"adj",zh:"主要的", def:"greater in importance"},
+  "past":{lemma:"past",pos:"adj",zh:"过去的", def:"gone by in time"}, "final":{lemma:"final",pos:"adj",zh:"最终的", def:"coming at the end"},
+  "present":{lemma:"present",pos:"adj",zh:"现在的", def:"existing now"}, "future":{lemma:"future",pos:"adj",zh:"未来的", def:"time yet to come"},
+  "perfect":{lemma:"perfect",pos:"adj",zh:"完美的", def:"without flaws"}, "original":{lemma:"original",pos:"adj",zh:"原始的", def:"not copied"},
+  "safe":{lemma:"safe",pos:"adj",zh:"安全的", def:"free from danger"}, "deep":{lemma:"deep",pos:"adj",zh:"深的", def:"extending far down"},
+  "wide":{lemma:"wide",pos:"adj",zh:"宽的", def:"of great breadth"}, "thin":{lemma:"thin",pos:"adj",zh:"薄的", def:"of small thickness"},
+  "thick":{lemma:"thick",pos:"adj",zh:"厚的", def:"of great thickness"}, "fast":{lemma:"fast",pos:"adj",zh:"快的", def:"moving quickly"},
+  "slow":{lemma:"slow",pos:"adj",zh:"慢的", def:"not moving quickly"}, "cheap":{lemma:"cheap",pos:"adj",zh:"便宜的", def:"low in price"},
+  "expensive":{lemma:"expensive",pos:"adj",zh:"昂贵的", def:"high in price"}, "easy":{lemma:"easy",pos:"adj",zh:"容易的", def:"not difficult"},
+  "difficult":{lemma:"difficult",pos:"adj",zh:"困难的", def:"hard to do"}, "busy":{lemma:"busy",pos:"adj",zh:"忙碌的", def:"having much to do"},
+  "quiet":{lemma:"quiet",pos:"adj",zh:"安静的", def:"making little noise"}, "loud":{lemma:"loud",pos:"adj",zh:"大声的", def:"producing much noise"},
+  "rich":{lemma:"rich",pos:"adj",zh:"富有的", def:"having much money"}, "poor":{lemma:"poor",pos:"adj",zh:"贫穷的", def:"having little money"},
+  // 常见副词
+  "not":{lemma:"not",pos:"adv",zh:"不", def:"negation"}, "also":{lemma:"also",pos:"adv",zh:"也", def:"in addition"},
+  "very":{lemma:"very",pos:"adv",zh:"非常", def:"to a great degree"}, "often":{lemma:"often",pos:"adv",zh:"经常", def:"many times"},
+  "then":{lemma:"then",pos:"adv",zh:"然后", def:"at that time"}, "still":{lemma:"still",pos:"adv",zh:"仍然", def:"even now"},
+  "already":{lemma:"already",pos:"adv",zh:"已经", def:"by this time"}, "never":{lemma:"never",pos:"adv",zh:"从不", def:"at no time"},
+  "always":{lemma:"always",pos:"adv",zh:"总是", def:"at all times"}, "just":{lemma:"just",pos:"adv",zh:"只是/刚刚", def:"only; exactly"},
+  "really":{lemma:"really",pos:"adv",zh:"真的", def:"in truth"}, "now":{lemma:"now",pos:"adv",zh:"现在", def:"at the present time"},
+  "here":{lemma:"here",pos:"adv",zh:"这里", def:"in this place"}, "there":{lemma:"there",pos:"adv",zh:"那里", def:"in that place"},
+  "too":{lemma:"too",pos:"adv",zh:"也/太", def:"also; excessively"}, "again":{lemma:"again",pos:"adv",zh:"再次", def:"once more"},
+  "only":{lemma:"only",pos:"adv",zh:"只", def:"and no more"}, "maybe":{lemma:"maybe",pos:"adv",zh:"也许", def:"perhaps"},
+  "perhaps":{lemma:"perhaps",pos:"adv",zh:"也许", def:"possibly"}, "quite":{lemma:"quite",pos:"adv",zh:"相当", def:"to a considerable extent"},
+  "almost":{lemma:"almost",pos:"adv",zh:"几乎", def:"nearly"}, "even":{lemma:"even",pos:"adv",zh:"甚至", def:"used to emphasize"},
+  "actually":{lemma:"actually",pos:"adv",zh:"实际上", def:"in fact"}, "probably":{lemma:"probably",pos:"adv",zh:"可能", def:"most likely"},
+  "suddenly":{lemma:"suddenly",pos:"adv",zh:"突然", def:"quickly and unexpectedly"}, "exactly":{lemma:"exactly",pos:"adv",zh:"确切地", def:"with precision"},
+  "finally":{lemma:"finally",pos:"adv",zh:"最终", def:"at last"}, "recently":{lemma:"recently",pos:"adv",zh:"最近", def:"not long ago"},
+  "usually":{lemma:"usually",pos:"adv",zh:"通常", def:"most of the time"}, "especially":{lemma:"especially",pos:"adv",zh:"特别地", def:"particularly"},
+  "simply":{lemma:"simply",pos:"adv",zh:"简单地", def:"in a simple manner"}, "quickly":{lemma:"quickly",pos:"adv",zh:"快速地", def:"with speed"},
+  "slowly":{lemma:"slowly",pos:"adv",zh:"缓慢地", def:"without speed"}, "together":{lemma:"together",pos:"adv",zh:"一起", def:"in company"},
+  // 介词
+  "in":{lemma:"in",pos:"prep",zh:"在…里", def:"inside; within"}, "on":{lemma:"on",pos:"prep",zh:"在…上", def:"supported by a surface"},
+  "at":{lemma:"at",pos:"prep",zh:"在", def:"expressing location or time"}, "for":{lemma:"for",pos:"prep",zh:"为了", def:"intended for"},
+  "to":{lemma:"to",pos:"prep",zh:"到", def:"expressing direction"}, "of":{lemma:"of",pos:"prep",zh:"…的", def:"belonging to"},
+  "with":{lemma:"with",pos:"prep",zh:"和/用", def:"accompanied by"}, "from":{lemma:"from",pos:"prep",zh:"从", def:"indicating origin"},
+  "by":{lemma:"by",pos:"prep",zh:"通过/被", def:"through the agency of"}, "about":{lemma:"about",pos:"prep",zh:"关于", def:"concerning"},
+  "as":{lemma:"as",pos:"prep",zh:"作为", def:"in the role of"}, "into":{lemma:"into",pos:"prep",zh:"进入", def:"moving inside"},
+  "like":{lemma:"like",pos:"prep",zh:"像", def:"similar to"}, "through":{lemma:"through",pos:"prep",zh:"通过", def:"from one side to the other"},
+  "after":{lemma:"after",pos:"prep",zh:"在…之后", def:"following in time"}, "before":{lemma:"before",pos:"prep",zh:"在…之前", def:"preceding in time"},
+  "between":{lemma:"between",pos:"prep",zh:"在…之间", def:"in the space separating"}, "under":{lemma:"under",pos:"prep",zh:"在…下", def:"below"},
+  "over":{lemma:"over",pos:"prep",zh:"在…上方", def:"above; covering"}, "up":{lemma:"up",pos:"prep",zh:"向上", def:"toward a higher position"},
+  "down":{lemma:"down",pos:"prep",zh:"向下", def:"toward a lower position"}, "out":{lemma:"out",pos:"adv",zh:"外面", def:"not inside"},
+  "off":{lemma:"off",pos:"prep",zh:"离开", def:"not on; away"}, "around":{lemma:"around",pos:"prep",zh:"周围", def:"on all sides"},
+  "during":{lemma:"during",pos:"prep",zh:"在…期间", def:"throughout the duration of"}, "without":{lemma:"without",pos:"prep",zh:"没有", def:"not having"},
+  "until":{lemma:"until",pos:"prep",zh:"直到", def:"up to the time that"}, "against":{lemma:"against",pos:"prep",zh:"反对", def:"in opposition to"},
+  "along":{lemma:"along",pos:"prep",zh:"沿着", def:"following a line"}, "across":{lemma:"across",pos:"prep",zh:"穿过", def:"from one side to the other"},
+  "behind":{lemma:"behind",pos:"prep",zh:"在…后面", def:"at the back of"}, "above":{lemma:"above",pos:"prep",zh:"在…上方", def:"higher than"},
+  "below":{lemma:"below",pos:"prep",zh:"在…下方", def:"lower than"}, "beside":{lemma:"beside",pos:"prep",zh:"在…旁边", def:"at the side of"},
+  "beyond":{lemma:"beyond",pos:"prep",zh:"超越", def:"farther than"}, "toward":{lemma:"toward",pos:"prep",zh:"朝向", def:"in the direction of"},
+  "towards":{lemma:"towards",pos:"prep",zh:"朝向", def:"in the direction of"}, "upon":{lemma:"upon",pos:"prep",zh:"在…之上", def:"on top of"},
+  "within":{lemma:"within",pos:"prep",zh:"在…之内", def:"inside of"}, "among":{lemma:"among",pos:"prep",zh:"在…之中", def:"in the middle of"},
+  // 连词
+  "and":{lemma:"and",pos:"conj",zh:"和", def:"also; in addition"}, "or":{lemma:"or",pos:"conj",zh:"或", def:"indicating an alternative"},
+  "but":{lemma:"but",pos:"conj",zh:"但是", def:"however"}, "so":{lemma:"so",pos:"conj",zh:"所以", def:"therefore"},
+  "if":{lemma:"if",pos:"conj",zh:"如果", def:"on condition that"}, "when":{lemma:"when",pos:"conj",zh:"当…时", def:"at the time that"},
+  "because":{lemma:"because",pos:"conj",zh:"因为", def:"for the reason that"}, "while":{lemma:"while",pos:"conj",zh:"当…时", def:"during the time that"},
+  "although":{lemma:"although",pos:"conj",zh:"虽然", def:"in spite of the fact"}, "since":{lemma:"since",pos:"conj",zh:"自从/因为", def:"from that time; because"},
+  "unless":{lemma:"unless",pos:"conj",zh:"除非", def:"if not"}, "until":{lemma:"until",pos:"conj",zh:"直到", def:"up to the time that"},
+  "though":{lemma:"though",pos:"conj",zh:"虽然", def:"however; in spite of"}, "whether":{lemma:"whether",pos:"conj",zh:"是否", def:"expressing a choice"},
+  "yet":{lemma:"yet",pos:"conj",zh:"然而", def:"but; nevertheless"}, "once":{lemma:"once",pos:"conj",zh:"一旦", def:"one time; as soon as"},
+  "than":{lemma:"than",pos:"conj",zh:"比", def:"used in comparisons"}, "where":{lemma:"where",pos:"conj",zh:"哪里", def:"in what place"},
+  "how":{lemma:"how",pos:"adv",zh:"如何", def:"in what way"}, "why":{lemma:"why",pos:"adv",zh:"为什么", def:"for what reason"},
+  // 常见副词/小品词
+  "yes":{lemma:"yes",pos:"adv",zh:"是", def:"affirmative"}, "no":{lemma:"no",pos:"adv",zh:"不", def:"negative"},
+  "please":{lemma:"please",pos:"adv",zh:"请", def:"used in polite requests"}, "sorry":{lemma:"sorry",pos:"adj",zh:"抱歉的", def:"feeling regret"},
+  "thanks":{lemma:"thanks",pos:"noun",zh:"谢谢", def:"expression of gratitude"}, "well":{lemma:"well",pos:"adv",zh:"好地", def:"in a good way"},
+  "back":{lemma:"back",pos:"adv",zh:"回", def:"toward the rear"}, "away":{lemma:"away",pos:"adv",zh:"离开", def:"to a distance"},
+  "much":{lemma:"much",pos:"adv",zh:"很多", def:"a great deal"}, "more":{lemma:"more",pos:"adv",zh:"更多", def:"to a greater extent"},
+  "most":{lemma:"most",pos:"adv",zh:"最", def:"to the greatest extent"}, "less":{lemma:"less",pos:"adv",zh:"更少", def:"to a smaller extent"},
+  "least":{lemma:"least",pos:"adv",zh:"最少", def:"to the smallest extent"}, "else":{lemma:"else",pos:"adv",zh:"其他", def:"additional; different"},
+  "enough":{lemma:"enough",pos:"adv",zh:"足够", def:"sufficient"}, "ever":{lemma:"ever",pos:"adv",zh:"曾经", def:"at any time"},
+  "soon":{lemma:"soon",pos:"adv",zh:"很快", def:"in a short time"}, "yet":{lemma:"yet",pos:"adv",zh:"还", def:"but; nevertheless"},
+  "however":{lemma:"however",pos:"adv",zh:"然而", def:"nevertheless"}, "thus":{lemma:"thus",pos:"adv",zh:"因此", def:"in this way"},
+  "therefore":{lemma:"therefore",pos:"adv",zh:"因此", def:"for that reason"}, "moreover":{lemma:"moreover",pos:"adv",zh:"此外", def:"in addition"},
+  "furthermore":{lemma:"furthermore",pos:"adv",zh:"此外", def:"in addition"}, "otherwise":{lemma:"otherwise",pos:"adv",zh:"否则", def:"in a different way"},
+  "instead":{lemma:"instead",pos:"adv",zh:"代替", def:"as an alternative"}, "anyway":{lemma:"anyway",pos:"adv",zh:"不管怎样", def:"regardless"},
+  "somehow":{lemma:"somehow",pos:"adv",zh:"不知怎么地", def:"in some way"}, "somewhere":{lemma:"somewhere",pos:"adv",zh:"某处", def:"in some place"},
+  "everywhere":{lemma:"everywhere",pos:"adv",zh:"到处", def:"in all places"}, "nowhere":{lemma:"nowhere",pos:"adv",zh:"无处", def:"in no place"},
+  // 不规则动词过去式/过去分词补充
+  "spoken":{lemma:"speak",pos:"verb",zh:"说(过去分词)", def:"past participle of speak"},
+  "written":{lemma:"write",pos:"verb",zh:"写(过去分词)", def:"past participle of write"},
+  "broken":{lemma:"break",pos:"verb",zh:"打破(过去分词)", def:"past participle of break"},
+  "chosen":{lemma:"choose",pos:"verb",zh:"选择(过去分词)", def:"past participle of choose"},
+  "driven":{lemma:"drive",pos:"verb",zh:"驾驶(过去分词)", def:"past participle of drive"},
+  "eaten":{lemma:"eat",pos:"verb",zh:"吃(过去分词)", def:"past participle of eat"},
+  "fallen":{lemma:"fall",pos:"verb",zh:"落下(过去分词)", def:"past participle of fall"},
+  "forgotten":{lemma:"forget",pos:"verb",zh:"忘记(过去分词)", def:"past participle of forget"},
+  "given":{lemma:"give",pos:"verb",zh:"给(过去分词)", def:"past participle of give"},
+  "grown":{lemma:"grow",pos:"verb",zh:"成长(过去分词)", def:"past participle of grow"},
+  "hidden":{lemma:"hide",pos:"verb",zh:"隐藏(过去分词)", def:"past participle of hide"},
+  "risen":{lemma:"rise",pos:"verb",zh:"升起(过去分词)", def:"past participle of rise"},
+  "seen":{lemma:"see",pos:"verb",zh:"看见(过去分词)", def:"past participle of see"},
+  "stolen":{lemma:"steal",pos:"verb",zh:"偷(过去分词)", def:"past participle of steal"},
+  "taken":{lemma:"take",pos:"verb",zh:"拿(过去分词)", def:"past participle of take"},
+  "thrown":{lemma:"throw",pos:"verb",zh:"扔(过去分词)", def:"past participle of throw"},
+  "woken":{lemma:"wake",pos:"verb",zh:"醒(过去分词)", def:"past participle of wake"},
+  "born":{lemma:"bear",pos:"verb",zh:"出生", def:"brought into existence"},
+  "chose":{lemma:"choose",pos:"verb",zh:"选择(过去)", def:"past tense of choose"},
+  "drove":{lemma:"drive",pos:"verb",zh:"驾驶(过去)", def:"past tense of drive"},
+  "fell":{lemma:"fall",pos:"verb",zh:"落下(过去)", def:"past tense of fall"},
+  "forgot":{lemma:"forget",pos:"verb",zh:"忘记(过去)", def:"past tense of forget"},
+  "froze":{lemma:"freeze",pos:"verb",zh:"冻结(过去)", def:"past tense of freeze"},
+  "grew":{lemma:"grow",pos:"verb",zh:"成长(过去)", def:"past tense of grow"},
+  "hid":{lemma:"hide",pos:"verb",zh:"隐藏(过去)", def:"past tense of hide"},
+  "rode":{lemma:"ride",pos:"verb",zh:"骑(过去)", def:"past tense of ride"},
+  "rose":{lemma:"rise",pos:"verb",zh:"升起(过去)", def:"past tense of rise"},
+  "stole":{lemma:"steal",pos:"verb",zh:"偷(过去)", def:"past tense of steal"},
+  "woke":{lemma:"wake",pos:"verb",zh:"醒(过去)", def:"past tense of wake"},
+  "wrote":{lemma:"write",pos:"verb",zh:"写(过去)", def:"past tense of write"},
+  "spoke":{lemma:"speak",pos:"verb",zh:"说(过去)", def:"past tense of speak"},
+  // 常见 -ly 副词在迷你词典中不需要逐一列出，由规则处理
+};
+
+// =====================================================================
+// 词性推断规则：不在迷你词典中的词，根据后缀和上下文推断
+// =====================================================================
+function inferPOS(word) {
+  const w = word.toLowerCase();
+  // 副词 -ly
+  if (w.length > 4 && w.endsWith('ly')) return 'adv';
+  // 形容词后缀
+  if (w.endsWith('ful') || w.endsWith('less') || w.endsWith('ous') ||
+      w.endsWith('ive') || w.endsWith('able') || w.endsWith('ible') ||
+      w.endsWith('al') || w.endsWith('ial') || w.endsWith('ent') ||
+      w.endsWith('ant') || w.endsWith('ic') || w.endsWith('ical') ||
+      w.endsWith('ish') || w.endsWith('ary') || w.endsWith('ory')) return 'adj';
+  // 名词后缀
+  if (w.endsWith('tion') || w.endsWith('sion') || w.endsWith('ment') ||
+      w.endsWith('ness') || w.endsWith('ity') || w.endsWith('ence') ||
+      w.endsWith('ance') || w.endsWith('er') || w.endsWith('or') ||
+      w.endsWith('ist') || w.endsWith('ism') || w.endsWith('ure') ||
+      w.endsWith('dom') || w.endsWith('ship') || w.endsWith('hood')) return 'noun';
+  // 动词后缀
+  if (w.endsWith('ize') || w.endsWith('ise') || w.endsWith('fy') ||
+      w.endsWith('ate') || w.endsWith('en')) return 'verb';
+  // -ing 形式
+  if (w.length > 4 && w.endsWith('ing')) return 'verb';
+  // -ed 过去式/过去分词
+  if (w.length > 3 && w.endsWith('ed')) return 'verb';
+  // -s 第三人称单数
+  if (w.length > 3 && w.endsWith('s') && !w.endsWith('ss') && !w.endsWith('us')) return 'verb';
+  // 默认
+  return 'noun';
+}
+
+// =====================================================================
+// 推断原形 (lemma)
+// =====================================================================
+function inferLemma(word, pos) {
+  const w = word.toLowerCase();
+  if (pos === 'verb') {
+    // -ing → 去掉 ing
+    if (w.endsWith('ing') && w.length > 5) {
+      const stem = w.slice(0, -3);
+      // doubling: running → run
+      if (stem.length > 2 && stem[stem.length-1] === stem[stem.length-2]) return stem.slice(0, -1);
+      // e-drop: making → make
+      if (stem.length > 2) return stem + 'e';
+      return stem;
+    }
+    // -ed → 去掉 ed
+    if (w.endsWith('ed') && w.length > 4) {
+      const stem = w.slice(0, -2);
+      if (stem.length > 2 && stem[stem.length-1] === stem[stem.length-2]) return stem.slice(0, -1);
+      if (stem.endsWith('i')) return stem.slice(0, -1) + 'y'; // studied → study... no, that's wrong for most
+      return stem + (w.endsWith('ied') ? 'y' : ''); // tried → try... handled below
+    }
+    if (w.endsWith('ied') && w.length > 4) return w.slice(0, -3) + 'y'; // tried → try
+    // -es
+    if (w.endsWith('es') && w.length > 4) return w.slice(0, -2);
+    // -s
+    if (w.endsWith('s') && !w.endsWith('ss') && w.length > 3) return w.slice(0, -1);
+  }
+  if (pos === 'noun') {
+    // -ies → -y (stories → story)
+    if (w.endsWith('ies') && w.length > 4) return w.slice(0, -3) + 'y';
+    // -ves → -f (lives → life) — 不完美但够用
+    if (w.endsWith('ves') && w.length > 4) return w.slice(0, -3) + 'f';
+    // -es
+    if (w.endsWith('es') && w.length > 4) return w.slice(0, -2);
+    // -s
+    if (w.endsWith('s') && !w.endsWith('ss') && w.length > 3) return w.slice(0, -1);
+  }
+  if (pos === 'adj') {
+    // -er 比较级
+    if (w.endsWith('er') && w.length > 4) return w.slice(0, -2); // rough
+    // -est 最高级
+    if (w.endsWith('est') && w.length > 5) return w.slice(0, -3);
+  }
+  if (pos === 'adv') {
+    // -ly 副词 → 去掉 ly 得到形容词
+    if (w.endsWith('ly') && w.length > 4) return w.slice(0, -2);
+  }
+  return w;
+}
+
+// =====================================================================
+// 获取词性 CSS 类名
+// =====================================================================
+function posClass(pos) {
+  const map = { noun: 'pos-noun', verb: 'pos-verb', adj: 'pos-adj', adv: 'pos-adv',
+                prep: 'pos-prep', pron: 'pos-other', det: 'pos-other', conj: 'pos-other',
+                interj: 'pos-other', other: 'pos-other' };
+  return map[pos] || 'pos-other';
+}
+
+// =====================================================================
+// 词性中文名
+// =====================================================================
+function posZh(pos) {
+  const map = { noun: '名词', verb: '动词', adj: '形容词', adv: '副词',
+                prep: '介词', pron: '代词', det: '冠词', conj: '连词',
+                interj: '感叹词', other: '其他' };
+  return map[pos] || '其他';
+}
+
+// =====================================================================
+// 词性颜色
+// =====================================================================
+function posColor(pos) {
+  const map = { noun: 'var(--noun)', verb: 'var(--verb)', adj: 'var(--adj)',
+                adv: 'var(--adv)', prep: 'var(--prep)' };
+  return map[pos] || 'var(--other)';
+}
+
+// =====================================================================
+// SRT 解析
+// =====================================================================
+function parseSRT(text) {
+  const blocks = text.trim().replace(/\r\n/g, '\n').split(/\n\n+/);
+  const result = [];
+  for (const block of blocks) {
+    const lines = block.split('\n');
+    if (lines.length < 3) continue;
+    const index = parseInt(lines[0].trim(), 10);
+    if (isNaN(index)) continue;
+    const timeLine = lines[1].trim();
+    if (!timeLine.includes('-->')) continue;
+    const text2 = lines.slice(2).join(' ').trim();
+    if (!text2) continue;
+    result.push({ index, time: timeLine, text: text2 });
+  }
+  return result;
+}
+
+// =====================================================================
+// 单词分词（简单实现，处理缩写和标点）
+// =====================================================================
+function tokenize(sentence) {
+  // 去掉HTML标签
+  let s = sentence.replace(/<[^>]+>/g, '');
+  // 处理缩写 don't → do n't 等，保留撇号
+  const tokens = [];
+  // 用正则匹配单词和标点
+  const regex = /([a-zA-Z]+'?[a-zA-Z]*)|([.,!?;:'"()\[\]{}\-–—…]+)/g;
+  let m;
+  while ((m = regex.exec(s)) !== null) {
+    if (m[1]) {
+      // 处理常见缩写拆分
+      const word = m[1];
+      const lower = word.toLowerCase();
+      // n't 分离
+      if (lower.endsWith("n't") && lower.length > 4) {
+        tokens.push(word.slice(0, -3));
+        tokens.push("n't");
+      }
+      // 's 分离（但不是所有格如 it's = it is）
+      else if (lower.endsWith("'s") && lower.length > 2) {
+        tokens.push(word.slice(0, -2));
+        tokens.push("'s");
+      }
+      // 're
+      else if (lower.endsWith("'re") && lower.length > 3) {
+        tokens.push(word.slice(0, -3));
+        tokens.push("'re");
+      }
+      // 've
+      else if (lower.endsWith("'ve") && lower.length > 3) {
+        tokens.push(word.slice(0, -3));
+        tokens.push("'ve");
+      }
+      // 'll
+      else if (lower.endsWith("'ll") && lower.length > 3) {
+        tokens.push(word.slice(0, -3));
+        tokens.push("'ll");
+      }
+      // 'd
+      else if (lower.endsWith("'d") && lower.length > 2) {
+        tokens.push(word.slice(0, -2));
+        tokens.push("'d");
+      }
+      // 'm
+      else if (lower.endsWith("'m") && lower.length > 2) {
+        tokens.push(word.slice(0, -2));
+        tokens.push("'m");
+      }
+      else {
+        tokens.push(word);
+      }
+    } else if (m[2]) {
+      tokens.push(m[2]);
+    }
+  }
+  return tokens;
+}
+
+// =====================================================================
+// 单词分析（逐词）
+// =====================================================================
+async function analyzeWords(sentence) {
+  const key = sentence;
+  if (analysisCache[key]) return analysisCache[key];
+
+  const tokens = tokenize(sentence);
+  const words = tokens.filter(t => /^[a-zA-Z]/.test(t)); // 只分析字母开头的词
+  const results = [];
+
+  for (const token of tokens) {
+    if (!/^[a-zA-Z]/.test(token)) {
+      // 标点符号
+      results.push({ original: token, lemma: token, pos: 'punct', zh: token, isPunct: true });
+      continue;
+    }
+
+    const lower = token.toLowerCase();
+    let info;
+
+    // 查迷你词典
+    if (MINI_DICT[lower]) {
+      info = { ...MINI_DICT[lower] };
+    } else {
+      // 推断词性和原形
+      const pos = inferPOS(token);
+      const lemma = inferLemma(token, pos);
+      info = { lemma, pos, zh: '' };
+    }
+
+    results.push({
+      original: token,
+      lemma: info.lemma,
+      pos: info.pos,
+      zh: info.zh,
+      def: info.def || '',
+      isPunct: false,
+      dictFetched: !!info.zh // 如果迷你词典有中文则标记已获取
+    });
+  }
+
+  analysisCache[key] = results;
+  return results;
+}
+
+// =====================================================================
+// 异步补充 Free Dictionary API 词义
+// =====================================================================
+const DICT_API_BASE = 'https://api.dictionaryapi.dev/api/v2/entries/en/';
+let dictQueue = [];
+let dictFetching = false;
+
+async function fetchWordDefinition(word) {
+  const lower = word.toLowerCase();
+  if (dictCache[lower] !== undefined) return dictCache[lower];
+
+  try {
+    const resp = await fetch(DICT_API_BASE + encodeURIComponent(lower), { signal: AbortSignal.timeout(5000) });
+    if (!resp.ok) throw new Error('Not found');
+    const data = await resp.json();
+    if (!Array.isArray(data) || data.length === 0) throw new Error('Empty');
+
+    // 提取第一个释义
+    const entry = data[0];
+    const meanings = entry.meanings || [];
+    let primaryPos = 'other';
+    let primaryZh = '';
+    let definitions = [];
+
+    for (const m of meanings) {
+      const partOfSpeech = m.partOfSpeech; // noun, verb, adjective, adverb, etc.
+      const posMap = { noun: 'noun', verb: 'verb', adjective: 'adj', adverb: 'adv',
+                       preposition: 'prep', pronoun: 'pron', determiner: 'det',
+                       conjunction: 'conj', interjection: 'interj' };
+      const pos = posMap[partOfSpeech] || 'other';
+      if (!primaryPos || primaryPos === 'other') primaryPos = pos;
+
+      for (const d of (m.definitions || []).slice(0, 2)) {
+        definitions.push({ pos, definition: d.definition, example: d.example || '' });
+      }
+    }
+
+    // 用定义做简单中文标注（因为 Free Dictionary 不提供中文，我们标注英文定义首条）
+    const result = {
+      found: true,
+      pos: primaryPos,
+      definitions,
+      phonetic: entry.phonetic || '',
+      lemma: entry.word || lower
+    };
+
+    dictCache[lower] = result;
+    return result;
+  } catch (e) {
+    dictCache[lower] = { found: false, pos: 'other', definitions: [], phonetic: '', lemma: lower };
+    return dictCache[lower];
+  }
+}
+
+// =====================================================================
+// 有道词典中文翻译（补充 Free Dictionary 不提供中文的问题）
+// =====================================================================
+async function fetchChineseFromYoudao(word) {
+  const lower = word.toLowerCase();
+  if (youdaoCache[lower] !== undefined) return youdaoCache[lower];
+
+  try {
+    const resp = await fetch(
+      'https://dict.youdao.com/suggest?num=1&q=' + encodeURIComponent(lower) + '&doctype=json',
+      { signal: AbortSignal.timeout(5000) }
+    );
+    if (!resp.ok) throw new Error('Not found');
+    const data = await resp.json();
+
+    const entries = data?.data?.entries;
+    if (entries && entries.length > 0 && entries[0].explain) {
+      const explain = entries[0].explain;
+      // 提取中文部分，如 "n. 勇气；胆量" → "勇气；胆量"
+      const zhMatch = explain.match(/[\u4e00-\u9fff\uff0c\u3001\uff1b\u3002；，、。].*/);
+      const zh = zhMatch ? zhMatch[0].replace(/^[;\s]+/, '') : explain;
+      youdaoCache[lower] = zh;
+      return zh;
+    }
+    youdaoCache[lower] = '';
+    return '';
+  } catch (e) {
+    youdaoCache[lower] = '';
+    return '';
+  }
+}
+
+// 批量获取句中缺少中文释义的词
+async function fetchMissingChinese(wordAnalysisList) {
+  const promises = [];
+  for (const w of wordAnalysisList) {
+    if (w.isPunct || w.zh) continue;
+    promises.push((async () => {
+      try {
+        const zh = await fetchChineseFromYoudao(w.lemma);
+        if (zh) w.zh = zh;
+      } catch (e) { /* ignore */ }
+    })());
+  }
+  if (promises.length > 0) {
+    // 限制并发
+    const chunks = [];
+    for (let i = 0; i < promises.length; i += 3) {
+      chunks.push(Promise.all(promises.slice(i, i + 3)));
+    }
+    for (const chunk of chunks) {
+      await chunk;
+    }
+  }
+}
+
+// 批量获取句中未获取的词义
+async function fetchMissingDefinitions(wordAnalysisList) {
+  const promises = [];
+  for (const w of wordAnalysisList) {
+    if (w.isPunct || w.dictFetched) continue;
+    if (dictCache[w.lemma.toLowerCase()] !== undefined) continue;
+    promises.push(fetchWordDefinition(w.lemma.toLowerCase()));
+  }
+  if (promises.length > 0) {
+    // 限制并发
+    const chunks = [];
+    for (let i = 0; i < promises.length; i += 3) {
+      chunks.push(Promise.all(promises.slice(i, i + 3)));
+    }
+    for (const chunk of chunks) {
+      await chunk;
+    }
+  }
+}
+
+// =====================================================================
+// 语法分析（纯规则匹配）
+// =====================================================================
+function analyzeGrammar(sentence) {
+  if (grammarCache[sentence]) return grammarCache[sentence];
+
+  const s = sentence.trim();
+  const words = tokenize(s).filter(t => /^[a-zA-Z]/.test(t));
+  const lowerWords = words.map(w => w.toLowerCase());
+  const result = {
+    tense: '',           // 时态
+    sentenceType: '',    // 句式
+    components: [],      // 核心成分 [{role, words}]
+    clauses: []          // 从句 [{type, words}]
+  };
+
+  // ===== 1. 句式判断 =====
+  if (s.endsWith('?')) {
+    result.sentenceType = '疑问句';
+  } else if (lowerWords.includes('not') || lowerWords.includes("n't") || lowerWords.includes('never') || lowerWords.includes('no')) {
+    // 检查是否否定
+    const hasNegation = lowerWords.some(w => w === 'not' || w === "n't" || w === 'never' || w === 'no' || w === 'nothing' || w === 'nobody' || w === 'nowhere' || w === 'neither' || w === 'nor');
+    if (s.endsWith('?')) {
+      result.sentenceType = '疑问句';
+    } else {
+      result.sentenceType = hasNegation ? '否定句' : '陈述句';
+    }
+  } else if (s.endsWith('!') && !lowerWords.includes('what') && !lowerWords.includes('how')) {
+    result.sentenceType = '祈使句';
+    // 祈使句：动词开头
+    if (words.length > 0) {
+      const firstWord = lowerWords[0];
+      const verbStarters = ['go', 'come', 'let', 'please', 'don', 'do', 'stop', 'get', 'take',
+                            'give', 'tell', 'make', 'put', 'keep', 'look', 'listen', 'watch',
+                            'wait', 'try', 'be', 'have', 'run', 'sit', 'stand', 'open', 'close',
+                            'turn', 'move', 'leave', 'call', 'help', 'show', 'read', 'write',
+                            'send', 'bring', 'pay', 'buy', 'eat', 'drink', 'sleep', 'wake',
+                            'start', 'begin', 'stop', 'finish', 'remember', 'forget', 'think',
+                            'believe', 'imagine', 'consider', 'feel', 'hear', 'see', 'say',
+                            'speak', 'ask', 'answer', 'use', 'pick', 'choose', 'check', 'set',
+                            'follow', 'hold', 'catch', 'pull', 'push', 'lift', 'drop', 'raise'];
+      if (verbStarters.includes(firstWord)) {
+        result.sentenceType = '祈使句';
+      }
+    }
+  } else {
+    // 判断是否祈使：动词原形开头且不是助动词
+    if (words.length > 0) {
+      const firstWord = lowerWords[0];
+      const auxVerbs = ['i', 'you', 'he', 'she', 'it', 'we', 'they', 'the', 'a', 'an',
+                        'this', 'that', 'these', 'those', 'my', 'your', 'his', 'her', 'its',
+                        'our', 'their', 'there', 'here', 'what', 'who', 'which', 'when', 'where',
+                        'why', 'how', 'all', 'some', 'every', 'each', 'both', 'either', 'neither',
+                        'much', 'many', 'more', 'most', 'few', 'little', 'several', 'enough',
+                        'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
+                        'no', 'not', 'if', 'because', 'although', 'since', 'while', 'when', 'after',
+                        'before', 'until', 'unless', 'whether'];
+      if (!auxVerbs.includes(firstWord)) {
+        const verbStarters = ['go', 'come', 'let', 'please', 'don', 'do', 'stop', 'get', 'take',
+                              'give', 'tell', 'make', 'put', 'keep', 'look', 'listen', 'watch',
+                              'wait', 'try', 'be', 'have', 'run', 'sit', 'stand', 'open', 'close',
+                              'turn', 'move', 'leave', 'call', 'help', 'show', 'read', 'write',
+                              'send', 'bring', 'pay', 'buy', 'eat', 'drink', 'sleep', 'wake',
+                              'start', 'begin', 'stop', 'finish', 'remember', 'forget', 'think',
+                              'feel', 'hear', 'see', 'say', 'speak', 'ask', 'answer', 'use',
+                              'pick', 'choose', 'check', 'set', 'follow', 'hold', 'catch', 'pull',
+                              'push', 'lift', 'drop', 'raise', 'never', 'always', 'just', 'only'];
+        if (verbStarters.includes(firstWord)) {
+          result.sentenceType = '祈使句';
+        } else {
+          result.sentenceType = '陈述句';
+        }
+      } else {
+        result.sentenceType = '陈述句';
+      }
+    } else {
+      result.sentenceType = '陈述句';
+    }
+  }
+
+  // 问句反转检查：助动词/Be动词/Have开头
+  const questionStarters = ['do', 'does', 'did', 'is', 'are', 'was', 'were', 'have', 'has', 'had',
+                            'will', 'would', 'shall', 'should', 'can', 'could', 'may', 'might', 'must'];
+  if (lowerWords.length > 0 && questionStarters.includes(lowerWords[0]) && !s.endsWith('?')) {
+    // 不以问号结尾但有疑问词开头的，仍算陈述
+  }
+
+  // ===== 2. 时态判断 =====
+  const hasWill = lowerWords.includes('will') || lowerWords.includes("'ll");
+  const hasWould = lowerWords.includes('would');
+  const hasShall = lowerWords.includes('shall');
+  const hasShould = lowerWords.includes('should');
+  const hasHave = lowerWords.includes('have') || lowerWords.includes('has') || lowerWords.includes('had') || lowerWords.includes("'ve");
+  const hasHad = lowerWords.includes('had');
+  const hasBe = lowerWords.includes('is') || lowerWords.includes('am') || lowerWords.includes('are') || lowerWords.includes('was') || lowerWords.includes('were') || lowerWords.includes('be') || lowerWords.includes("'m") || lowerWords.includes("'re");
+  const hasBeen = lowerWords.includes('being') || lowerWords.includes('been');
+  const hasIng = words.some(w => w.length > 4 && w.toLowerCase().endsWith('ing'));
+  const hasEd = words.some(w => w.length > 3 && w.toLowerCase().endsWith('ed'));
+
+  // 常见过去式词
+  const pastWords = ['was', 'were', 'went', 'came', 'said', 'told', 'knew', 'thought',
+                     'saw', 'got', 'made', 'took', 'gave', 'found', 'heard', 'felt',
+                     'kept', 'left', 'lost', 'ran', 'wrote', 'spoke', 'drove', 'ate',
+                     'fell', 'grew', 'chose', 'rode', 'rose', 'stole', 'woke', 'hid',
+                     'froze', 'began', 'drank', 'flew', 'hung', 'led', 'shut', 'sang',
+                     'swam', 'taught', 'threw', 'brought', 'caught', 'bought', 'built',
+                     'cut', 'drew', 'paid', 'sat', 'stood', 'won', 'sold', 'meant',
+                     'held', 'met', 'put', 'read', 'set'];
+  const hasPastWord = lowerWords.some(w => pastWords.includes(w));
+
+  if (hasWill || hasShall) {
+    if (hasBe && hasIng) {
+      result.tense = '将来进行时';
+    } else if (hasHave && (hasEd || hasBeen || lowerWords.some(w => pastWords.includes(w)))) {
+      result.tense = '将来完成时';
+    } else {
+      result.tense = '一般将来时';
+    }
+  } else if (hasWould || hasShould) {
+    if (hasBe && hasIng) {
+      result.tense = '过去将来进行时';
+    } else if (hasHave && (hasEd || hasBeen)) {
+      result.tense = '过去将来完成时';
+    } else {
+      result.tense = '过去将来时';
+    }
+  } else if (hasHave) {
+    if (hasHad) {
+      // had + 过去分词
+      if (hasBeen && hasIng) {
+        result.tense = '过去完成进行时';
+      } else {
+        result.tense = '过去完成时';
+      }
+    } else if (hasBeen && hasIng) {
+      result.tense = '现在完成进行时';
+    } else if (hasBe && hasIng) {
+      result.tense = '现在完成进行时';
+    } else {
+      result.tense = '现在完成时';
+    }
+  } else if (hasBe && hasIng) {
+    if (lowerWords.includes('was') || lowerWords.includes('were')) {
+      result.tense = '过去进行时';
+    } else {
+      result.tense = '现在进行时';
+    }
+  } else if (hasPastWord || hasEd || lowerWords.includes('was') || lowerWords.includes('were')) {
+    result.tense = '一般过去时';
+  } else {
+    result.tense = '一般现在时';
+  }
+
+  // ===== 3. 核心成分标注 =====
+  // 简化版：基于词性序列推断 SVO
+  const wordInfoList = words.map((w, i) => {
+    const lower = w.toLowerCase();
+    let pos;
+    if (MINI_DICT[lower]) pos = MINI_DICT[lower].pos;
+    else pos = inferPOS(w);
+    return { word: w, lower, pos, index: i };
+  });
+
+  // 找主语：句首的代词/名词，到第一个动词之前
+  let subjectEnd = -1;
+  let predicateStart = -1;
+  let predicateEnd = -1;
+  let objectStart = -1;
+
+  // 找第一个实义动词
+  for (let i = 0; i < wordInfoList.length; i++) {
+    if (wordInfoList[i].pos === 'verb') {
+      predicateStart = i;
+      break;
+    }
+  }
+
+  if (predicateStart === -1) predicateStart = wordInfoList.length;
+
+  // 主语 = 句首到谓语动词之前（排除冠词）
+  if (predicateStart > 0) {
+    const subjectWords = [];
+    for (let i = 0; i < predicateStart; i++) {
+      if (wordInfoList[i].pos === 'det' || wordInfoList[i].pos === 'prep') continue;
+      subjectWords.push(i);
+    }
+    if (subjectWords.length > 0) {
+      result.components.push({ role: '主语 (S)', wordIndices: subjectWords });
+    }
+  }
+
+  // 谓语 = 动词序列（含助动词）
+  if (predicateStart < wordInfoList.length) {
+    const predWords = [];
+    let i = predicateStart;
+    // 包括助动词链
+    while (i < wordInfoList.length && (wordInfoList[i].pos === 'verb' || wordInfoList[i].pos === 'adv')) {
+      predWords.push(i);
+      i++;
+      // 如果下一个是副词再动词（如 "not go"）
+      if (i < wordInfoList.length && wordInfoList[i].pos === 'adv' && i + 1 < wordInfoList.length && wordInfoList[i+1].pos === 'verb') {
+        predWords.push(i);
+        i++;
+      }
+    }
+    predicateEnd = i - 1;
+    if (predWords.length > 0) {
+      result.components.push({ role: '谓语 (V)', wordIndices: predWords });
+    }
+
+    // 宾语 = 谓语之后的名词/代词
+    const objWords = [];
+    for (let j = predicateEnd + 1; j < wordInfoList.length; j++) {
+      if (wordInfoList[j].pos === 'noun' || wordInfoList[j].pos === 'pron') {
+        objWords.push(j);
+      } else if (wordInfoList[j].pos === 'det' && objWords.length === 0) {
+        // 冠词在宾语名词前
+        objWords.push(j);
+      } else if (wordInfoList[j].pos === 'adj' && objWords.length > 0) {
+        // 形容词修饰宾语
+        continue;
+      } else if (objWords.length > 0) {
+        break;
+      }
+    }
+    if (objWords.length > 0) {
+      result.components.push({ role: '宾语 (O)', wordIndices: objWords });
+    }
+
+    // 修饰语/状语 = 介词短语等
+    const modifierWords = [];
+    for (let j = predicateEnd + 1; j < wordInfoList.length; j++) {
+      if (wordInfoList[j].pos === 'prep') {
+        // 介词短语开始
+        const prepPhrase = [j];
+        j++;
+        while (j < wordInfoList.length && wordInfoList[j].pos !== 'verb' && wordInfoList[j].pos !== 'conj') {
+          prepPhrase.push(j);
+          j++;
+        }
+        modifierWords.push(...prepPhrase);
+        j--;
+      }
+    }
+    if (modifierWords.length > 0) {
+      result.components.push({ role: '状语/修饰语', wordIndices: modifierWords });
+    }
+  } else {
+    // 没有动词，整句可能是名词短语
+    result.components.push({ role: '未知结构', wordIndices: wordInfoList.map((_, i) => i) });
+  }
+
+  // ===== 4. 从句识别 =====
+  // 定语从句引导词
+  const relativePronouns = ['who', 'whom', 'whose', 'which', 'that'];
+  // 状语从句引导词
+  const adverbialConjunctions = {
+    'if': '条件状语从句', 'unless': '条件状语从句',
+    'when': '时间状语从句', 'while': '时间状语从句', 'before': '时间状语从句',
+    'after': '时间状语从句', 'since': '时间/原因状语从句', 'until': '时间状语从句',
+    'till': '时间状语从句', 'once': '时间状语从句', 'as': '时间/方式状语从句',
+    'because': '原因状语从句', 'since': '原因状语从句', 'as': '原因状语从句',
+    'although': '让步状语从句', 'though': '让步状语从句', 'even': '让步状语从句',
+    'where': '地点状语从句', 'wherever': '地点状语从句',
+    'so': '结果状语从句', 'that': '结果/目的状语从句',
+    'in order': '目的状语从句',
+  };
+  // 宾语从句引导词
+  const objectClauseTriggers = ['that', 'whether', 'if', 'what', 'who', 'whom', 'which', 'how', 'why', 'where', 'when'];
+
+  for (let i = 0; i < lowerWords.length; i++) {
+    const w = lowerWords[i];
+
+    // 定语从句：名词后的 that/which/who
+    if (relativePronouns.includes(w) && i > 0) {
+      const prevPos = wordInfoList[i-1]?.pos;
+      if (prevPos === 'noun' || prevPos === 'pron' || prevPos === 'adj') {
+        // 找从句结尾（到下一个逗号或句末）
+        let clauseEnd = Math.min(i + 8, lowerWords.length);
+        for (let j = i + 1; j < lowerWords.length; j++) {
+          if (lowerWords[j] === 'and' || lowerWords[j] === 'but' || lowerWords[j] === 'or') {
+            clauseEnd = j;
+            break;
+          }
+        }
+        result.clauses.push({
+          type: '定语从句',
+          trigger: w,
+          wordIndices: Array.from({length: clauseEnd - i}, (_, k) => i + k)
+        });
+        i = clauseEnd;
+        continue;
+      }
+    }
+
+    // 状语从句
+    if (adverbialConjunctions[w] && (i === 0 || (i > 0 && wordInfoList[i-1]?.pos === 'conj' || lowerWords[i-1] === ','))) {
+      let clauseEnd = Math.min(i + 10, lowerWords.length);
+      for (let j = i + 1; j < lowerWords.length; j++) {
+        if ([',', 'and', 'but'].includes(lowerWords[j]) && j > i + 2) {
+          clauseEnd = j;
+          break;
+        }
+      }
+      result.clauses.push({
+        type: adverbialConjunctions[w],
+        trigger: w,
+        wordIndices: Array.from({length: clauseEnd - i}, (_, k) => i + k)
+      });
+      i = clauseEnd;
+      continue;
+    }
+
+    // 宾语从句：动词后紧跟 that/whether/if 等
+    if (objectClauseTriggers.includes(w) && i > 0 && i < lowerWords.length - 2) {
+      const prevPos = wordInfoList[i-1]?.pos;
+      if (prevPos === 'verb') {
+        let clauseEnd = Math.min(i + 10, lowerWords.length);
+        result.clauses.push({
+          type: '宾语从句',
+          trigger: w,
+          wordIndices: Array.from({length: clauseEnd - i}, (_, k) => i + k)
+        });
+        i = clauseEnd;
+        continue;
+      }
+    }
+  }
+
+  grammarCache[sentence] = result;
+  return result;
+}
+
+// =====================================================================
+// 文件上传处理
+// =====================================================================
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+
+// 拖拽事件
+dropZone.addEventListener('dragover', e => {
+  e.preventDefault();
+  dropZone.classList.add('dragover');
+});
+dropZone.addEventListener('dragleave', e => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+});
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) handleFile(file);
+});
+// 点击上传
+dropZone.addEventListener('click', e => {
+  if (e.target.tagName !== 'BUTTON') fileInput.click();
+});
+fileInput.addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (file) handleFile(file);
+});
+
+function handleFile(file) {
+  if (!file.name.endsWith('.srt')) {
+    alert('请上传 .srt 格式的字幕文件');
+    return;
+  }
+  // 先用 ArrayBuffer 读取，再尝试 UTF-8 解码；如果检测到乱码（大量 U+FFFD），自动回退用 GBK 解码
+  const reader = new FileReader();
+  reader.onload = e => {
+    const buffer = e.target.result;
+    const uint8 = new Uint8Array(buffer);
+
+    // 先尝试 UTF-8 解码
+    const utf8Text = new TextDecoder('utf-8', { fatal: false }).decode(uint8);
+
+    // 检测乱码：统计 U+FFFD 替换字符的比例
+    const replacementCount = (utf8Text.match(/\uFFFD/g) || []).length;
+    const totalChars = utf8Text.length || 1;
+    const garbledRatio = replacementCount / totalChars;
+
+    let text;
+    if (garbledRatio > 0.01) {
+      // UTF-8 解码出现较多替换字符，疑似 GBK/GB2312 编码，回退用 GBK 解码
+      text = new TextDecoder('gbk', { fatal: false }).decode(uint8);
+    } else {
+      text = utf8Text;
+    }
+
+    subtitles = parseSRT(text);
+    if (subtitles.length === 0) {
+      alert('无法解析该 SRT 文件，请检查格式');
+      return;
+    }
+    // 保存到 localStorage，下次打开自动加载
+    try {
+      localStorage.setItem('srt_subtitles', JSON.stringify(subtitles));
+      localStorage.setItem('srt_filename', file.name);
+      console.log(`[Storage] 已缓存 ${subtitles.length} 条字幕到本地`);
+    } catch(e) {
+      console.warn('[Storage] 缓存失败（可能数据过大）:', e);
+    }
+    showMainPage();
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// =====================================================================
+// 显示主界面
+// =====================================================================
+function showMainPage() {
+  document.getElementById('upload-page').classList.add('hidden');
+  document.getElementById('main-page').classList.remove('hidden');
+  document.getElementById('stats').classList.remove('hidden');
+  document.getElementById('btn-export').classList.remove('hidden');
+  document.getElementById('btn-upload-new').classList.remove('hidden');
+
+  // 统计
+  updateStats();
+
+  // 渲染字幕列表
+  renderSubtitleList();
+
+  // 尝试加载同目录下的 ai_explanations.json
+  aiPreloadPromise = loadAIExplanationsFile();
+}
+
+// =====================================================================
+// 加载 ai_explanations.json（如果存在，直接缓存 AI 解释，无需调用 API）
+// =====================================================================
+async function loadAIExplanationsFile() {
+  try {
+    const resp = await fetch('./ai_explanations.json', { signal: AbortSignal.timeout(5000) });
+    if (!resp.ok) {
+      console.log('[AI] ai_explanations.json 不存在，回退到 API 调用模式');
+      return;
+    }
+    const data = await resp.json();
+    if (typeof data === 'object' && data !== null) {
+      // 支持两种格式：{ "sentence": {...} } 或 [{ sentence: "...", ... }]
+      if (Array.isArray(data)) {
+        for (const item of data) {
+          if (item.sentence) {
+            aiExplanationCache[item.sentence] = item;
+          }
+        }
+      } else {
+        Object.assign(aiExplanationCache, data);
+      }
+      console.log(`[AI] 已从 ai_explanations.json 加载 ${Object.keys(data).length || data.length} 条预生成解释`);
+    }
+  } catch (e) {
+    console.log('[AI] ai_explanations.json 加载失败，回退到 API 调用模式:', e.message);
+  }
+}
+
+function updateStats() {
+  const totalSentences = subtitles.length;
+  let totalWords = 0;
+  const uniqueWords = new Set();
+  for (const sub of subtitles) {
+    const words = tokenize(sub.text).filter(t => /^[a-zA-Z]/.test(t));
+    totalWords += words.length;
+    words.forEach(w => uniqueWords.add(w.toLowerCase()));
+  }
+  document.getElementById('stat-sentences').textContent = totalSentences;
+  document.getElementById('stat-words').textContent = totalWords;
+  document.getElementById('stat-unique').textContent = uniqueWords.size;
+}
+
+function renderSubtitleList(filter = '') {
+  const list = document.getElementById('subtitle-list');
+  list.innerHTML = '';
+  const filterLower = filter.toLowerCase();
+  const favs = getFavorites();
+
+  for (let i = 0; i < subtitles.length; i++) {
+    const sub = subtitles[i];
+    if (filter && !sub.text.toLowerCase().includes(filterLower)) continue;
+    if (favFilterActive && !favs.includes(i)) continue;
+
+    const isFav = favs.includes(i);
+    const div = document.createElement('div');
+    div.className = 'subtitle-item px-4 py-3' + (i === currentIdx ? ' active' : '');
+    div.style.borderBottom = '1px solid var(--border)';
+    div.innerHTML = `
+      <div class="flex items-center gap-2 mb-1">
+        <span class="text-xs font-mono" style="color:var(--accent)">${sub.index}</span>
+        <span class="text-xs" style="color:var(--text-muted)">${sub.time}</span>
+        ${isFav ? '<svg class="w-3 h-3 ml-auto" viewBox="0 0 24 24" fill="#ef4444" stroke="#ef4444" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>' : ''}
+      </div>
+      <div class="text-sm" style="color:var(--text-primary)">${escapeHtml(sub.text)}</div>
+    `;
+    div.addEventListener('click', () => selectSubtitle(i));
+    list.appendChild(div);
+  }
+}
+
+function filterSubtitles(value) {
+  renderSubtitleList(value);
+}
+
+// =====================================================================
+// 选中字幕并展示分析
+// =====================================================================
+async function selectSubtitle(idx) {
+  currentIdx = idx;
+  // 更新列表高亮
+  document.querySelectorAll('.subtitle-item').forEach((el, i) => {
+    el.classList.toggle('active', i === idx);
+  });
+
+  const sub = subtitles[idx];
+  const placeholder = document.getElementById('analysis-placeholder');
+  const content = document.getElementById('analysis-content');
+  placeholder.classList.add('hidden');
+  content.classList.remove('hidden');
+
+  // 显示加载状态
+  content.innerHTML = '<div class="flex items-center justify-center h-full"><p class="loading-pulse" style="color:var(--text-muted)">分析中...</p></div>';
+
+  // 异步分析
+  const wordAnalysis = await analyzeWords(sub.text);
+  // analyzeGrammar 保留但不再在渲染中调用（语法分析区域已移除）
+  const grammarResult = null;
+
+  // 异步获取词典定义
+  await fetchMissingDefinitions(wordAnalysis);
+
+  // 合并词典结果到词分析
+  for (const w of wordAnalysis) {
+    if (w.isPunct || w.dictFetched) continue;
+    const cached = dictCache[w.lemma.toLowerCase()];
+    if (cached && cached.found) {
+      // 如果词典返回了更准确的词性，用词典的
+      if (cached.pos && cached.pos !== 'other') {
+        w.pos = cached.pos;
+      }
+      w.lemma = cached.lemma || w.lemma;
+      w.phonetic = cached.phonetic || '';
+      w.definitions = cached.definitions || [];
+    }
+    w.dictFetched = true;
+  }
+
+  // 用有道词典补充中文释义（不再用英文定义代替中文）
+  await fetchMissingChinese(wordAnalysis);
+
+  // 渲染分析面板
+  renderAnalysis(sub, wordAnalysis, grammarResult);
+  updateFavIcon();
+
+  // 异步加载 AI 解释（不阻塞主渲染）
+  loadAIExplanation(sub.text);
+}
+
+// =====================================================================
+// 渲染分析面板
+// =====================================================================
+function renderAnalysis(sub, wordAnalysis, grammar) {
+  const content = document.getElementById('analysis-content');
+  const tokens = tokenize(sub.text);
+
+  // ===== 原文展示（带词性颜色） =====
+  let originalHTML = '';
+  let wordIdx = 0;
+  for (const w of wordAnalysis) {
+    if (w.isPunct) {
+      originalHTML += `<span style="color:var(--text-muted)">${escapeHtml(w.original)}</span>`;
+    } else {
+      const cls = posClass(w.pos);
+      const color = posColor(w.pos);
+      originalHTML += `<span class="${cls} cursor-pointer hover:opacity-80 transition-opacity" data-word-idx="${wordIdx}" onclick="showWordDetail(${wordIdx}, event)">${escapeHtml(w.original)}</span> `;
+      wordIdx++;
+    }
+  }
+
+  // ===== 逐词分析表 =====
+  let wordsHTML = '<div class="mt-6"><h4 class="text-sm font-semibold mb-3" style="color:var(--text-secondary)">🔤 逐词分析</h4>';
+  wordsHTML += '<div class="grid gap-2" style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr))">';
+
+  let wordCounter = 0;
+  for (const w of wordAnalysis) {
+    if (w.isPunct) continue;
+    const color = posColor(w.pos);
+    const enDef = w.def || (w.definitions && w.definitions.length > 0 ? w.definitions[0].definition : '');
+    wordsHTML += `
+      <div class="rounded-lg p-3 cursor-pointer hover:opacity-90 transition-opacity" 
+           style="background:var(--bg-secondary);border:1px solid var(--border)"
+           onclick="showWordDetail(${wordCounter}, event)">
+        <div class="flex items-center justify-between mb-1">
+          <span class="text-sm font-medium" style="color:var(--text-primary)">${escapeHtml(w.original)}</span>
+          <span class="tag" style="background:${color}22;color:${color}">${posZh(w.pos)}</span>
+        </div>
+        <div class="text-xs" style="color:var(--text-muted)">原形: ${escapeHtml(w.lemma)}</div>
+        <div class="text-sm mt-1 font-semibold" style="color:var(--accent)">${escapeHtml(w.zh || '—')}</div>
+        ${enDef ? `<div class="text-xs mt-0.5" style="color:var(--text-muted)">${escapeHtml(enDef)}</div>` : ''}
+      </div>
+    `;
+    wordCounter++;
+  }
+  wordsHTML += '</div></div>';
+
+  // 词性图例
+  const posLegendHTML = `
+    <div class="flex flex-wrap gap-3 text-xs" style="color:var(--text-muted)">
+      <span class="flex items-center gap-1"><span style="color:var(--noun)">●</span> 名词</span>
+      <span class="flex items-center gap-1"><span style="color:var(--verb)">●</span> 动词</span>
+      <span class="flex items-center gap-1"><span style="color:var(--adj)">●</span> 形容词</span>
+      <span class="flex items-center gap-1"><span style="color:var(--adv)">●</span> 副词</span>
+      <span class="flex items-center gap-1"><span style="color:var(--prep)">●</span> 介词</span>
+      <span class="flex items-center gap-1"><span style="color:var(--other)">●</span> 其他</span>
+    </div>
+  `;
+
+  content.innerHTML = `
+    <div class="fade-in max-w-3xl">
+      <!-- 时间轴 + 收藏 -->
+      <div class="flex items-center gap-3 mb-4">
+        <span class="text-xs font-mono px-2 py-1 rounded" style="background:var(--bg-tertiary);color:var(--accent)">#${sub.index}</span>
+        <span class="text-xs" style="color:var(--text-muted)">${sub.time}</span>
+        <button id="btn-favorite" onclick="toggleFavorite()" class="ml-auto p-1 rounded-lg transition-colors" title="收藏此句"
+          style="color:var(--text-muted)"
+          onmouseover="this.style.background='var(--bg-hover)'"
+          onmouseout="this.style.background='transparent'">
+          <svg class="w-5 h-5" id="fav-icon" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke="currentColor">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- 原文（词性着色） -->
+      <div class="mb-4">
+        <h4 class="text-sm font-semibold mb-2" style="color:var(--text-secondary)">📝 原文</h4>
+        <div class="text-lg leading-relaxed">${originalHTML}</div>
+        <div class="mt-2">${posLegendHTML}</div>
+      </div>
+
+      <!-- 逐词分析 -->
+      ${wordsHTML}
+
+      <!-- AI 解释与扩展容器 -->
+      <div id="ai-explanation-container"></div>
+    </div>
+  `;
+
+  // 滚动到顶部
+  content.scrollTop = 0;
+}
+
+function getGramRoleName(cls) {
+  const map = { 'gram-subject': '主语', 'gram-predicate': '谓语', 'gram-object': '宾语',
+                'gram-modifier': '修饰语', 'gram-clause': '从句' };
+  return map[cls] || '';
+}
+
+// =====================================================================
+// 单词详情浮层
+// =====================================================================
+function showWordDetail(wordIdx, event) {
+  const sub = subtitles[currentIdx];
+  if (!sub) return;
+  const wordAnalysis = analysisCache[sub.text];
+  if (!wordAnalysis) return;
+
+  const words = wordAnalysis.filter(w => !w.isPunct);
+  if (wordIdx >= words.length) return;
+
+  const w = words[wordIdx];
+  const tooltip = document.getElementById('word-tooltip');
+
+  // 构建所有 definitions（不同词性全部展示）
+  let defsHTML = '';
+  if (w.definitions && w.definitions.length > 0) {
+    defsHTML = w.definitions.map(d =>
+      `<div class="mb-1">
+        <span class="tag mr-1" style="background:${posColor(d.pos)}22;color:${posColor(d.pos)}">${posZh(d.pos)}</span>
+        <span class="text-sm" style="color:var(--text-primary)">${escapeHtml(d.definition)}</span>
+      </div>`
+    ).join('');
+  } else if (w.def) {
+    defsHTML = `<div class="mb-1"><span class="text-sm" style="color:var(--text-primary)">${escapeHtml(w.def)}</span></div>`;
+  }
+
+  // 提取与该词相关的 AI 知识点
+  let kpHTML = '';
+  const aiData = aiExplanationCache[sub.text];
+  if (aiData && aiData.knowledgePoints) {
+    const wordLower = w.original.toLowerCase();
+    const lemmaLower = w.lemma.toLowerCase();
+    const relatedKPs = aiData.knowledgePoints.filter(kp => {
+      const titleLower = (kp.title || '').toLowerCase();
+      const contentLower = (kp.content || '').toLowerCase();
+      return titleLower.includes(wordLower) || contentLower.includes(wordLower) ||
+             titleLower.includes(lemmaLower) || contentLower.includes(lemmaLower);
+    });
+    if (relatedKPs.length > 0) {
+      kpHTML = '<div class="border-t pt-2 mt-2" style="border-color:var(--border)"><div class="text-xs mb-1 font-semibold" style="color:var(--accent)">💡 相关知识点</div>';
+      for (const kp of relatedKPs.slice(0, 3)) {
+        kpHTML += `<div class="mb-2">
+          <div class="text-xs font-semibold" style="color:var(--text-primary)">${escapeHtml(kp.title)}</div>
+          <div class="text-xs" style="color:var(--text-secondary);line-height:1.5">${escapeHtml(kp.content)}</div>
+          ${kp.example ? `<div class="text-xs mt-0.5" style="color:var(--text-muted);font-style:italic;border-left:2px solid var(--accent);padding-left:6px">${escapeHtml(kp.example)}</div>` : ''}
+        </div>`;
+      }
+      kpHTML += '</div>';
+    }
+  }
+
+  tooltip.innerHTML = `
+    <div class="mb-2">
+      <span class="text-lg font-bold" style="color:var(--text-primary)">${escapeHtml(w.original)}</span>
+      ${w.phonetic ? `<span class="text-sm ml-2" style="color:var(--text-muted)">/${escapeHtml(w.phonetic)}/</span>` : ''}
+    </div>
+    <div class="flex gap-2 mb-2">
+      <span class="tag" style="background:${posColor(w.pos)}22;color:${posColor(w.pos)}">${posZh(w.pos)}</span>
+      <span class="text-xs" style="color:var(--text-muted)">原形: ${escapeHtml(w.lemma)}</span>
+    </div>
+    <div class="text-base mb-2 font-semibold" style="color:var(--accent)">${escapeHtml(w.zh || '暂无中文释义')}</div>
+    ${defsHTML ? '<div class="border-t pt-2 mt-2" style="border-color:var(--border)"><div class="text-xs mb-1" style="color:var(--text-muted)">英文释义:</div>' + defsHTML + '</div>' : ''}
+    ${kpHTML}
+  `;
+
+  tooltip.classList.remove('hidden');
+
+  // 定位
+  const rect = event.target.getBoundingClientRect();
+  let top = rect.bottom + 8;
+  let left = rect.left;
+
+  // 防止超出视口
+  if (top + 200 > window.innerHeight) top = rect.top - 200;
+  if (left + 320 > window.innerWidth) left = window.innerWidth - 340;
+  if (left < 10) left = 10;
+
+  tooltip.style.top = top + 'px';
+  tooltip.style.left = left + 'px';
+}
+
+// 点击其他地方关闭浮层
+document.addEventListener('click', e => {
+  const tooltip = document.getElementById('word-tooltip');
+  if (!tooltip.contains(e.target) && !e.target.dataset?.wordIdx) {
+    tooltip.classList.add('hidden');
+  }
+});
+
+// =====================================================================
+// 导出 JSON
+// =====================================================================
+function exportJSON() {
+  const data = {
+    exportTime: new Date().toISOString(),
+    totalSentences: subtitles.length,
+    subtitles: subtitles.map(sub => {
+      const wordAnalysis = analysisCache[sub.text] || [];
+      const grammarResult = grammarCache[sub.text] || null;
+      return {
+        index: sub.index,
+        time: sub.time,
+        text: sub.text,
+        words: wordAnalysis.filter(w => !w.isPunct).map(w => ({
+          original: w.original,
+          lemma: w.lemma,
+          pos: w.pos,
+          posZh: posZh(w.pos),
+          zh: w.zh || '',
+          def: w.def || '',
+          definitions: w.definitions || []
+        })),
+        grammar: grammarResult
+      };
+    })
+  };
+
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'srt-analysis.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// =====================================================================
+// 重置
+// =====================================================================
+function resetApp() {
+  subtitles = [];
+  currentIdx = -1;
+  analysisCache = {};
+  grammarCache = {};
+  favFilterActive = false;
+  const favBtn = document.getElementById('btn-filter-fav');
+  if (favBtn) {
+    favBtn.classList.remove('active');
+    favBtn.style.background = 'var(--bg-tertiary)';
+    favBtn.style.color = 'var(--text-muted)';
+    favBtn.style.borderColor = 'var(--border)';
+    const svg = favBtn.querySelector('svg');
+    if (svg) svg.setAttribute('fill', 'none');
+  }
+  // 清除本地缓存
+  localStorage.removeItem('srt_subtitles');
+  localStorage.removeItem('srt_filename');
+  document.getElementById('upload-page').classList.remove('hidden');
+  document.getElementById('main-page').classList.add('hidden');
+  document.getElementById('stats').classList.add('hidden');
+  document.getElementById('btn-export').classList.add('hidden');
+  document.getElementById('btn-upload-new').classList.add('hidden');
+  document.getElementById('analysis-placeholder').classList.remove('hidden');
+  document.getElementById('analysis-content').classList.add('hidden');
+  document.getElementById('subtitle-list').innerHTML = '';
+  document.getElementById('search-input').value = '';
+  fileInput.value = '';
+}
+
+// =====================================================================
+// 工具函数
+// =====================================================================
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// =====================================================================
+// 键盘快捷键：上下箭头切换字幕
+// =====================================================================
+document.addEventListener('keydown', e => {
+  if (subtitles.length === 0) return;
+  if (e.target.tagName === 'INPUT') return;
+
+  if (e.key === 'ArrowDown' && currentIdx < subtitles.length - 1) {
+    e.preventDefault();
+    selectSubtitle(currentIdx + 1);
+    scrollToItem(currentIdx);
+  } else if (e.key === 'ArrowUp' && currentIdx > 0) {
+    e.preventDefault();
+    selectSubtitle(currentIdx - 1);
+    scrollToItem(currentIdx);
+  }
+});
+
+function scrollToItem(idx) {
+  const items = document.querySelectorAll('.subtitle-item');
+  if (items[idx]) items[idx].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+// =====================================================================
+// 页面加载时自动恢复缓存
+// =====================================================================
+(function restoreFromCache() {
+  try {
+    const cached = localStorage.getItem('srt_subtitles');
+    if (cached) {
+      subtitles = JSON.parse(cached);
+      if (subtitles.length > 0) {
+        console.log(`[Storage] 从本地缓存恢复 ${subtitles.length} 条字幕`);
+        showMainPage();
+      }
+    }
+  } catch(e) {
+    console.warn('[Storage] 恢复缓存失败:', e);
+  }
+})();
+</script>
+
+</body>
+</html>
