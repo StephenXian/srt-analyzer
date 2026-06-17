@@ -125,6 +125,16 @@
   }
   .loading-pulse { animation: pulse 1.5s infinite; }
 
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+  .ai-streaming-cursor {
+    animation: blink 0.8s infinite;
+    color: var(--accent);
+    font-weight: bold;
+  }
+
   /* ===== 骨架屏动画 ===== */
   @keyframes shimmer {
     0% { background-position: -400px 0; }
@@ -804,6 +814,7 @@ let analysisCache = {};    // 逐词分析缓存 { sentenceKey: wordAnalysis[] }
 let grammarCache = {};     // 语法分析缓存
 let aiExplanationCache = {}; // AI 解释缓存 { sentence: { translation, grammar, expressions, vocabulary } }（按文件隔离，切换文件时清空）
 let aiPreloadPromise = null; // 预生成数据加载 Promise
+let aiAbortController = null; // 当前 AI 流式请求的 AbortController
 let aiLoadingState = false;  // AI 是否正在加载
 let favFilterActive = false; // 收藏过滤是否激活
 
@@ -1437,7 +1448,7 @@ async function callAIAPI(sentence) {
         ],
         temperature: 0.3
       }),
-      signal: AbortSignal.timeout(30000)
+      signal: AbortSignal.timeout(120000)
     });
 
     if (!response.ok) {
@@ -1463,6 +1474,151 @@ async function callAIAPI(sentence) {
     }
     return { error: `AI 调用失败: ${e.message}` };
   }
+}
+
+// =====================================================================
+// AI API 流式调用（OpenAI 兼容格式，streaming）
+// =====================================================================
+async function callAIAPIStream(sentence, onChunk, signal) {
+  const settings = getAISettings();
+  if (!settings.apiKey || !settings.baseUrl) {
+    return { error: '请先在设置中配置 AI API Key' };
+  }
+
+  const prompt = `你是一位资深的英语教师，正在帮中国学生深度理解一句英语。请像老师讲解一样，逐层拆解这句话，返回 JSON 格式。
+
+句子：${sentence}
+
+请返回以下 JSON 结构（不要加 markdown 代码块标记，直接返回纯 JSON）：
+{
+  "translation": "简短自然的中文翻译",
+  "literalTranslation": "字面翻译（逐词直译）",
+  "actualMeanings": ["实际意思1（口语化）", "实际意思2", "实际意思3"],
+  "expressionNote": "关于这个表达是否为固定搭配/习语的说明",
+  "sections": [
+    {
+      "title": "一、句子结构分析",
+      "markdown": "逐词拆解表格 + 主语/谓语/否定/介词短语的分别讲解。使用 markdown 格式，支持：表格(|col|col|)、加粗(**text**)、列表(- item)、分隔线(---)"
+    },
+    {
+      "title": "二、固定搭配辨析",
+      "markdown": "对比容易混淆的搭配（如 ask vs ask for），用 ❌ 和 ✅ 标注错误和正确用法，解释为什么"
+    },
+    {
+      "title": "三、时态分析",
+      "markdown": "解释为什么用这个时态，对比如果换用其他时态含义会有什么变化"
+    },
+    {
+      "title": "四、母语者语感",
+      "markdown": "英语母语者在什么场景下说这句话，类似中文的什么表达，给出2-3个变体用法"
+    },
+    {
+      "title": "五、深层理解",
+      "markdown": "这句话在政治剧/商务谈判等具体语境中的潜台词和言外之意"
+    },
+    {
+      "title": "六、语法知识点总结",
+      "markdown": "编号列出本句包含的核心语法知识点，每个知识点给出公式和2-3个举一反三的例句"
+    }
+  ]
+}
+
+要求：
+- actualMeanings 至少给2-3个口语化的翻译，让中国学生真正理解语感
+- 每个section的markdown内容要详细、有深度，像老师讲课一样娓娓道来
+- 不要泛泛而谈，要针对这句话的具体词汇和结构来讲解
+- 对比分析很重要：要讲"为什么用A而不用B"，这种辨析对中国学生最有帮助
+- 如果句子有文化背景或政治/商务语境，一定要在"深层理解"中展开`;
+
+  try {
+    const response = await fetch(settings.baseUrl + '/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + settings.apiKey
+      },
+      body: JSON.stringify({
+        model: settings.model,
+        messages: [
+          { role: 'system', content: '你是一位资深的英语教师，擅长用中文逐层拆解英语句子，帮助学生深入理解语法、搭配、语感和文化背景。请始终返回合法的 JSON 格式。' },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.3,
+        stream: true
+      }),
+      signal: signal
+    });
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => '');
+      return { error: `API 请求失败 (${response.status}): ${errText.slice(0, 200)}` };
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let fullText = '';
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop(); // 保留最后一行（可能不完整）
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed === 'data: [DONE]') continue;
+        if (!trimmed.startsWith('data: ')) continue;
+
+        try {
+          const json = JSON.parse(trimmed.slice(6));
+          const delta = json.choices?.[0]?.delta?.content || '';
+          if (delta) {
+            fullText += delta;
+            onChunk(fullText);
+          }
+        } catch (e) {
+          // 忽略解析错误，继续处理下一行
+        }
+      }
+    }
+
+    // 尝试解析完整 JSON
+    let jsonStr = fullText.trim();
+    const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (jsonMatch) jsonStr = jsonMatch[1].trim();
+
+    try {
+      const result = JSON.parse(jsonStr);
+      return result;
+    } catch (parseErr) {
+      return { error: 'AI 返回内容无法解析为 JSON，请重试' };
+    }
+  } catch (e) {
+    if (e.name === 'AbortError') throw e; // 向上抛出，让 loadAIExplanation 处理
+    if (e.name === 'TimeoutError') return { error: 'AI 请求超时，请稍后重试' };
+    return { error: `AI 调用失败: ${e.message}` };
+  }
+}
+
+// =====================================================================
+// 流式输出显示更新
+// =====================================================================
+function updateStreamingDisplay(partialText) {
+  const container = document.getElementById('ai-explanation-container');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="rounded-lg p-4 mt-4 fade-in" style="background:var(--bg-secondary);border:1px solid var(--border)">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-sm font-semibold" style="color:var(--text-secondary)">🤖 AI 深度解析</span>
+        <span class="text-xs loading-pulse" style="color:var(--accent)">生成中...</span>
+      </div>
+      <div class="text-sm leading-relaxed" style="color:var(--text-secondary);white-space:pre-wrap;word-break:break-word;font-family:monospace;background:var(--bg-tertiary);padding:12px;border-radius:8px;max-height:400px;overflow-y:auto">${escapeHtml(partialText)}<span class="ai-streaming-cursor">▌</span></div>
+    </div>
+  `;
 }
 
 // =====================================================================
@@ -1773,6 +1929,11 @@ async function retryAIExplanation() {
   const sentence = subtitles[currentIdx].text;
   // 清除缓存
   delete aiExplanationCache[sentence];
+  // abort 之前的请求
+  if (aiAbortController) {
+    aiAbortController.abort();
+    aiAbortController = null;
+  }
   // 重新加载
   await loadAIExplanation(sentence);
 }
@@ -1797,19 +1958,60 @@ function updateAISectionForCurrentSubtitle() {
 }
 
 // =====================================================================
-// 加载 AI 解释（异步，不阻塞主分析渲染）
+// 加载 AI 解释（异步，不阻塞主分析渲染，支持流式输出）
 // =====================================================================
 async function loadAIExplanation(sentence) {
   const containerId = 'ai-explanation-container';
   const container = document.getElementById(containerId);
   if (!container) return;
 
+  // abort 之前的请求
+  if (aiAbortController) {
+    aiAbortController.abort();
+  }
+  aiAbortController = new AbortController();
+  const currentController = aiAbortController;
+
   // 显示骨架屏
   container.innerHTML = renderAISkeleton();
 
-  // 异步获取
-  const result = await getAIExplanation(sentence);
-  container.innerHTML = renderAIExplanation(sentence, result);
+  // 等待预生成数据加载完成
+  if (aiPreloadPromise) {
+    await aiPreloadPromise;
+  }
+
+  // 检查缓存（预生成数据直接渲染，不需要流式）
+  if (aiExplanationCache[sentence]) {
+    container.innerHTML = renderAIExplanation(sentence, aiExplanationCache[sentence]);
+    return;
+  }
+
+  // 未配置 API → 显示提示
+  if (!isAIConfigured()) {
+    container.innerHTML = renderAIExplanation(sentence, { error: 'not_configured' });
+    return;
+  }
+
+  // 流式调用
+  try {
+    const result = await callAIAPIStream(sentence, (partialText) => {
+      // 如果已经切换了句子，不更新
+      if (aiAbortController !== currentController) return;
+      // 更新流式输出显示
+      updateStreamingDisplay(partialText);
+    }, currentController.signal);
+
+    // 如果已经切换了句子，不更新最终结果
+    if (aiAbortController !== currentController) return;
+
+    if (!result.error) {
+      aiExplanationCache[sentence] = result;
+    }
+    container.innerHTML = renderAIExplanation(sentence, result);
+  } catch (e) {
+    if (e.name === 'AbortError') return; // 用户切换了句子，静默
+    container.innerHTML = renderAIExplanation(sentence, { error: e.message });
+  }
 }
 
 // =====================================================================
