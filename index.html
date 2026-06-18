@@ -3634,17 +3634,44 @@ async function loadAIExplanationsFile() {
     }
     const data = await resp.json();
     if (typeof data === 'object' && data !== null) {
-      // 支持两种格式：{ "sentence": {...} } 或 [{ sentence: "...", ... }]
-      if (Array.isArray(data)) {
+      let rawExps = null;
+      // 格式1: { version, source, explanations: { "1": {...}, "2": {...} } }
+      if (data.explanations && typeof data.explanations === 'object') {
+        rawExps = data.explanations;
+      }
+      // 格式2: { "sentence text": {...}, ... }
+      else if (!Array.isArray(data) && !data.version && !data.source) {
+        rawExps = data;
+      }
+      // 格式3: [{ sentence: "...", ... }]
+      else if (Array.isArray(data)) {
+        rawExps = {};
         for (const item of data) {
           if (item.sentence) {
-            aiExplanationCache[item.sentence] = item;
+            rawExps[item.sentence] = item;
           }
         }
-      } else {
-        Object.assign(aiExplanationCache, data);
       }
-      console.log(`[AI] 已从 ai_explanations.json 加载 ${Object.keys(data).length || data.length} 条预生成解释`);
+
+      if (rawExps) {
+        // 如果 key 是数字索引（如 "1", "2"），映射到对应句子文本
+        const keys = Object.keys(rawExps);
+        const allNumeric = keys.length > 0 && keys.every(k => /^\d+$/.test(k));
+        if (allNumeric && subtitles && subtitles.length > 0) {
+          for (const k of keys) {
+            const idx = parseInt(k);
+            // 索引从1开始，对应 subtitles[idx-1]
+            if (idx >= 1 && idx <= subtitles.length) {
+              const sentence = subtitles[idx - 1].text;
+              aiExplanationCache[sentence] = rawExps[k];
+            }
+          }
+        } else {
+          // key 已经是句子文本，直接合并
+          Object.assign(aiExplanationCache, rawExps);
+        }
+        console.log(`[AI] 已从 ai_explanations.json 加载 ${Object.keys(rawExps).length} 条预生成解释`);
+      }
     }
   } catch (e) {
     console.log('[AI] ai_explanations.json 加载失败，回退到 API 调用模式:', e.message);
