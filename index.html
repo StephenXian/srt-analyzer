@@ -599,6 +599,175 @@
     flex-shrink: 0;
   }
 
+
+  /* ===== 聊天面板 ===== */
+  .chat-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+  }
+  .chat-context-bar {
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-secondary);
+    flex-shrink: 0;
+    min-height: 44px;
+  }
+  .chat-context-bar .ctx-empty {
+    font-size: 13px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 28px;
+  }
+  .chat-context-bar .ctx-sentence {
+    font-size: 14px;
+    color: var(--text-primary);
+    line-height: 1.5;
+  }
+  .chat-context-bar .ctx-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .chat-context-bar .ctx-word {
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .chat-context-bar .ctx-word:hover {
+    opacity: 0.7;
+  }
+  .chat-context-bar .ctx-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 4px;
+  }
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+  }
+  .chat-msg {
+    display: flex;
+    margin-bottom: 12px;
+    animation: fadeIn 0.3s ease;
+  }
+  .chat-msg.user {
+    justify-content: flex-end;
+  }
+  .chat-msg.ai {
+    justify-content: flex-start;
+  }
+  .chat-bubble {
+    max-width: 85%;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 14px;
+    line-height: 1.6;
+    word-break: break-word;
+  }
+  .chat-bubble.ai {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-bottom-left-radius: 4px;
+  }
+  .chat-bubble.user {
+    background: #dbeafe;
+    color: #1e3a5f;
+    border-bottom-right-radius: 4px;
+  }
+  .chat-bubble.ai .ai-md-content,
+  .chat-bubble.ai .ai-section-card,
+  .chat-bubble.ai .ai-expression-note,
+  .chat-bubble.ai .ai-meaning-item {
+    font-size: 13px;
+  }
+  .chat-bubble.ai .ai-section-card {
+    margin-bottom: 8px;
+  }
+  .chat-input-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-primary);
+    flex-shrink: 0;
+  }
+  .chat-input-bar textarea {
+    flex: 1;
+    resize: none;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 14px;
+    line-height: 1.5;
+    outline: none;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    max-height: 120px;
+    min-height: 40px;
+    font-family: inherit;
+    transition: border-color 0.2s;
+  }
+  .chat-input-bar textarea:focus {
+    border-color: var(--accent);
+  }
+  .chat-send-btn {
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    background: var(--accent);
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .chat-send-btn:hover {
+    background: var(--accent-hover);
+  }
+  .chat-send-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .chat-quick-btn {
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    background: var(--bg-tertiary);
+    color: var(--accent);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .chat-quick-btn:hover {
+    background: var(--bg-hover);
+    border-color: var(--accent);
+  }
+  .chat-loading-dots {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+  }
+  .chat-loading-dots span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    animation: pulse 1.4s infinite;
+  }
+  .chat-loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .chat-loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+
   /* ===== 响应式 ===== */
   @media (max-width: 768px) {
     .main-layout {
@@ -724,18 +893,32 @@
       </div>
     </div>
 
-    <!-- 右侧：分析面板 -->
+    <!-- 右侧：聊天面板 -->
     <div class="analysis-panel flex-1 flex flex-col overflow-hidden">
-      <div id="analysis-placeholder" class="flex-1 flex items-center justify-center" style="color:var(--text-muted)">
-        <div class="text-center">
-          <svg class="mx-auto mb-3 w-12 h-12 opacity-40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-            <path d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
-          </svg>
-          <p>点击左侧字幕查看详细分析</p>
+      <div class="chat-panel">
+        <!-- 上下文栏：显示当前选中的句子 -->
+        <div id="chat-context-bar" class="chat-context-bar">
+          <div class="ctx-empty">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 01.778-.332 48.294 48.294 0 005.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z"/>
+            </svg>
+            <span>点击左侧字幕选择句子作为上下文</span>
+          </div>
         </div>
-      </div>
-      <div id="analysis-content" class="hidden flex-1 overflow-y-auto p-6">
-        <!-- 分析内容动态生成 -->
+        <!-- 聊天消息区域 -->
+        <div id="chat-messages" class="chat-messages">
+          <div class="chat-msg ai">
+            <div class="chat-bubble ai">
+              <div class="ai-md-content">👋 你好！我是你的英语学习助手。<br><br>点击左侧字幕选择一个句子，然后在下方输入框提问。<br>你也可以点击「🔍 解析此句」快速获取句子的深度解析。</div>
+            </div>
+          </div>
+        </div>
+        <!-- 输入栏 -->
+        <div class="chat-input-bar">
+          <button class="chat-quick-btn" onclick="quickAnalyzeSentence()">🔍 解析此句</button>
+          <textarea id="chat-input" rows="1" placeholder="输入你的问题..." oninput="autoResizeTextarea(this)" onkeydown="handleChatKeydown(event)"></textarea>
+          <button class="chat-send-btn" id="chat-send-btn" onclick="sendChatMessage()">发送</button>
+        </div>
       </div>
     </div>
   </div>
@@ -867,7 +1050,11 @@ function toggleFavorite() {
   }
   saveFavorites(favs);
   updateFavIcon();
-  renderSubtitleList(document.getElementById('search-input').value);
+  // 刷新聊天上下文栏以更新收藏按钮状态
+  if (currentIdx >= 0 && subtitles[currentIdx]) {
+    updateChatContextBar(subtitles[currentIdx]);
+  }
+  renderSubtitleList(document.getElementById('search-input')?.value || '');
 }
 
 function updateFavIcon() {
@@ -1117,10 +1304,10 @@ async function deleteFile(name) {
     document.getElementById('stats').classList.add('hidden');
     document.getElementById('btn-export').classList.add('hidden');
     document.getElementById('file-selector').classList.add('hidden');
-    document.getElementById('analysis-placeholder').classList.remove('hidden');
-    document.getElementById('analysis-content').classList.add('hidden');
+    clearChat();
     document.getElementById('subtitle-list').innerHTML = '';
-    document.getElementById('search-input').value = '';
+    const si = document.getElementById('search-input');
+    if (si) si.value = '';
   }
   // 刷新历史列表
   await renderFileHistory();
@@ -1312,7 +1499,7 @@ function renderNoteDisplay(idx) {
           <span class="text-xs font-semibold" style="color:#d97706">📝 笔记</span>
           <button class="text-xs px-2 py-0.5 rounded" style="color:var(--text-muted);background:transparent" 
             onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text-muted)'"
-            onclick="toggleNote(${idx})">编辑</button>
+            onclick="toggleNoteChat()">编辑</button>
         </div>
         <div class="ai-md-content">${renderMD(note.text)}</div>
       </div>
@@ -1936,80 +2123,424 @@ function toggleAISection(sectionId) {
 async function retryAIExplanation() {
   if (currentIdx < 0 || !subtitles[currentIdx]) return;
   const sentence = subtitles[currentIdx].text;
-  // 清除缓存
   delete aiExplanationCache[sentence];
-  // abort 之前的请求
-  if (aiAbortController) {
-    aiAbortController.abort();
-    aiAbortController = null;
-  }
-  // 重新加载
-  await loadAIExplanation(sentence);
+  // 通过聊天面板重新触发分析
+  quickAnalyzeSentence();
 }
 
 // =====================================================================
 // 更新当前面板的 AI 区域（设置变更后调用）
 // =====================================================================
 function updateAISectionForCurrentSubtitle() {
-  if (currentIdx < 0 || !subtitles[currentIdx]) return;
-  const sentence = subtitles[currentIdx].text;
-  // 如果缓存有结果则重渲染，否则显示未配置提示
-  const aiSection = document.getElementById('ai-explanation-section');
-  if (aiSection) {
-    const cached = aiExplanationCache[sentence];
-    if (cached) {
-      aiSection.outerHTML = renderAIExplanation(sentence, cached);
-    } else {
-      // 显示未配置提示
-      aiSection.outerHTML = renderAIExplanation(sentence, { error: 'not_configured' });
-    }
-  }
+  // 聊天模式下，AI区域由聊天消息管理，此函数保留为空以防外部调用
 }
 
 // =====================================================================
 // 加载 AI 解释（异步，不阻塞主分析渲染，非流式调用 + 多配置降级）
 // =====================================================================
+// loadAIExplanation is now handled by the chat panel's requestAIAnalysis function.
+// This function is kept as a no-op for backward compatibility.
 async function loadAIExplanation(sentence) {
-  const containerId = 'ai-explanation-container';
-  const container = document.getElementById(containerId);
-  if (!container) return;
+  // No-op: AI explanation is triggered via chat panel
+}
 
-  // abort 之前的请求
-  if (aiAbortController) aiAbortController.abort();
-  aiAbortController = new AbortController();
-  const currentController = aiAbortController;
 
-  // 显示骨架屏
-  container.innerHTML = renderAISkeleton();
+// =====================================================================
+// 聊天面板功能
+// =====================================================================
+let chatMessages = []; // 聊天消息历史 [{ role: 'user'|'ai', type: 'text'|'analysis', content: ... }]
+let chatAIThinking = false; // AI 是否正在回复
 
-  // 等待预生成数据加载完成
-  if (aiPreloadPromise) await aiPreloadPromise;
-
-  // 检查缓存
-  if (aiExplanationCache[sentence]) {
-    container.innerHTML = renderAIExplanation(sentence, aiExplanationCache[sentence]);
+// 更新上下文栏
+function updateChatContextBar(sub) {
+  const bar = document.getElementById('chat-context-bar');
+  if (!sub) {
+    bar.innerHTML = `<div class="ctx-empty">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 01.778-.332 48.294 48.294 0 005.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z"/>
+      </svg>
+      <span>点击左侧字幕选择句子作为上下文</span>
+    </div>`;
     return;
   }
 
-  // 未配置 API → 显示提示
-  if (!isAIConfigured()) {
-    container.innerHTML = renderAIExplanation(sentence, { error: 'not_configured' });
-    return;
+  // 用已有分析结果或简单着色
+  const sentence = sub.text;
+  const wordAnalysis = analysisCache[sentence];
+
+  let sentenceHTML = '';
+  if (wordAnalysis) {
+    let wordIdx = 0;
+    for (const w of wordAnalysis) {
+      if (w.isPunct) {
+        sentenceHTML += `<span style="color:var(--text-muted)">${escapeHtml(w.original)}</span>`;
+      } else {
+        const cls = posClass(w.pos);
+        const color = posColor(w.pos);
+        sentenceHTML += `<span class="ctx-word ${cls}" data-word-idx="${wordIdx}" onclick="showWordDetail(${wordIdx}, event)">${escapeHtml(w.original)}</span> `;
+        wordIdx++;
+      }
+    }
+  } else {
+    sentenceHTML = escapeHtml(sentence);
   }
 
-  // 非流式调用（带多配置降级）
+  const hasNoteFlag = hasNote(currentIdx);
+  const isFav = isFavorite(currentIdx);
+
+  bar.innerHTML = `
+    <div class="ctx-meta">
+      <span class="text-xs font-mono px-1.5 py-0.5 rounded" style="background:var(--bg-tertiary);color:var(--accent)">#${sub.index}</span>
+      <span class="text-xs" style="color:var(--text-muted)">${sub.time}</span>
+      <div class="ctx-actions">
+        <button class="note-btn${hasNoteFlag ? ' has-note' : ''}" onclick="toggleNoteChat()" title="${hasNoteFlag ? '编辑笔记' : '添加笔记'}">📝</button>
+        <button onclick="toggleFavorite()" class="p-1 rounded-lg transition-colors" title="收藏此句"
+          style="color:${isFav ? '#ef4444' : 'var(--text-muted)'}"
+          onmouseover="this.style.background='var(--bg-hover)'"
+          onmouseout="this.style.background='transparent'">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" stroke-width="2" fill="${isFav ? '#ef4444' : 'none'}" stroke="${isFav ? '#ef4444' : 'currentColor'}">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div class="ctx-sentence">${sentenceHTML}</div>
+    <div id="note-container"></div>
+  `;
+
+  // 渲染笔记显示
+  renderNoteDisplay(currentIdx);
+}
+
+// 笔记相关 - 聊天模式下的适配
+function toggleNoteChat() {
+  if (currentIdx < 0) return;
+  const key = getNoteKey(currentIdx);
+  const existing = notesMap[key];
+  showNoteEditorInContext(existing ? existing.text || '' : '');
+}
+
+function showNoteEditorInContext(initialText) {
+  const noteContainer = document.getElementById('note-container');
+  if (!noteContainer) return;
+  noteContainer.innerHTML = `
+    <div class="note-input-area">
+      <textarea id="note-textarea" placeholder="输入笔记（支持 **加粗** 和 - 列表格式）">${escapeHtml(initialText)}</textarea>
+      <div class="note-actions">
+        <button class="note-delete-btn" onclick="deleteNoteChat()" style="${initialText ? '' : 'display:none'}">🗑 删除</button>
+        <button class="note-cancel-btn" onclick="cancelNoteEditChat()">取消</button>
+        <button class="note-save-btn" onclick="saveNoteFromEditorChat()">保存</button>
+      </div>
+    </div>
+  `;
+  setTimeout(() => document.getElementById('note-textarea')?.focus(), 100);
+}
+
+async function saveNoteFromEditorChat() {
+  const textarea = document.getElementById('note-textarea');
+  if (!textarea || currentIdx < 0) return;
+  const text = textarea.value.trim();
+  const key = getNoteKey(currentIdx);
   try {
-    const result = await callAIAPIWithFallback(sentence, currentController.signal);
-    // 如果已经切换了句子，不更新
-    if (aiAbortController !== currentController) return;
-
-    if (!result.error) aiExplanationCache[sentence] = result;
-    container.innerHTML = renderAIExplanation(sentence, result);
-  } catch (e) {
-    if (e.name === 'AbortError') return; // 用户切换了句子，静默
-    container.innerHTML = renderAIExplanation(sentence, { error: e.message });
+    if (text) {
+      const noteObj = { fileKey: currentFileKey, sentenceIdx: currentIdx, text, updatedAt: Date.now() };
+      await dbSaveNote(key, noteObj);
+      notesMap[key] = { key, ...noteObj };
+    } else {
+      await dbDeleteNote(key);
+      delete notesMap[key];
+    }
+  } catch(e) { console.warn('[Note] 保存失败:', e); }
+  renderNoteDisplay(currentIdx);
+  renderSubtitleList(document.getElementById('search-input')?.value || '');
+  if (currentIdx >= 0 && subtitles[currentIdx]) {
+    updateChatContextBar(subtitles[currentIdx]);
   }
 }
+
+async function deleteNoteChat() {
+  if (currentIdx < 0) return;
+  const key = getNoteKey(currentIdx);
+  try { await dbDeleteNote(key); } catch(e) {}
+  delete notesMap[key];
+  renderNoteDisplay(currentIdx);
+  renderSubtitleList(document.getElementById('search-input')?.value || '');
+  if (currentIdx >= 0 && subtitles[currentIdx]) {
+    updateChatContextBar(subtitles[currentIdx]);
+  }
+}
+
+function cancelNoteEditChat() {
+  if (currentIdx >= 0) {
+    renderNoteDisplay(currentIdx);
+  }
+}
+
+// 自动调整 textarea 高度
+function autoResizeTextarea(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+// 处理输入框按键
+function handleChatKeydown(event) {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    sendChatMessage();
+  }
+}
+
+// 快速解析当前句子
+function quickAnalyzeSentence() {
+  if (currentIdx < 0 || !subtitles[currentIdx]) {
+    appendChatMessage('user', 'text', '请解析当前句子');
+    appendChatMessage('ai', 'text', '请先在左侧点击选择一个句子，再点击「🔍 解析此句」。');
+    scrollChatToBottom();
+    return;
+  }
+  const sentence = subtitles[currentIdx].text;
+  // 发送用户消息
+  appendChatMessage('user', 'text', sentence);
+  scrollChatToBottom();
+  // 触发AI分析
+  requestAIAnalysis(sentence);
+}
+
+// 发送聊天消息
+async function sendChatMessage() {
+  const input = document.getElementById('chat-input');
+  if (!input) return;
+  const text = input.value.trim();
+  if (!text || chatAIThinking) return;
+
+  // 清空输入框
+  input.value = '';
+  input.style.height = 'auto';
+
+  // 添加用户消息
+  appendChatMessage('user', 'text', text);
+  scrollChatToBottom();
+
+  // 获取当前选中句子作为上下文
+  const currentSentence = (currentIdx >= 0 && subtitles[currentIdx]) ? subtitles[currentIdx].text : '';
+
+  // 请求AI回复
+  await requestAIChat(text, currentSentence);
+}
+
+// 请求AI分析（JSON格式，深度拆解）
+async function requestAIAnalysis(sentence) {
+  chatAIThinking = true;
+  updateSendBtnState();
+
+  // 显示加载中
+  const loadingId = appendChatMessage('ai', 'loading', '');
+
+  try {
+    // 等待预生成数据
+    if (aiPreloadPromise) await aiPreloadPromise;
+
+    // 检查缓存
+    let result;
+    if (aiExplanationCache[sentence]) {
+      result = aiExplanationCache[sentence];
+    } else if (isAIConfigured()) {
+      result = await callAIAPIWithFallback(sentence);
+      if (!result.error) aiExplanationCache[sentence] = result;
+    } else {
+      result = { error: 'not_configured' };
+    }
+
+    // 移除加载消息
+    removeChatMessage(loadingId);
+
+    if (result.error) {
+      let errMsg = 'AI 暂时无法解析此句。';
+      if (result.error === 'not_configured') {
+        errMsg = '请先在右上角设置中配置 AI API Key，才能使用 AI 解析功能。';
+      } else {
+        errMsg = '⚠️ ' + escapeHtml(result.error);
+      }
+      appendChatMessage('ai', 'text', errMsg);
+    } else {
+      // 渲染AI分析结果
+      appendChatMessage('ai', 'analysis', { sentence, data: result });
+    }
+  } catch (e) {
+    removeChatMessage(loadingId);
+    appendChatMessage('ai', 'text', '⚠️ AI 请求失败: ' + escapeHtml(e.message));
+  }
+
+  chatAIThinking = false;
+  updateSendBtnState();
+  scrollChatToBottom();
+}
+
+// 请求AI自由对话（Markdown文本回复）
+async function requestAIChat(userQuestion, contextSentence) {
+  chatAIThinking = true;
+  updateSendBtnState();
+
+  const loadingId = appendChatMessage('ai', 'loading', '');
+
+  try {
+    if (!isAIConfigured()) {
+      removeChatMessage(loadingId);
+      appendChatMessage('ai', 'text', '请先在右上角设置中配置 AI API Key，才能使用对话功能。');
+      chatAIThinking = false;
+      updateSendBtnState();
+      scrollChatToBottom();
+      return;
+    }
+
+    const configs = getAISettings();
+    const systemPrompt = contextSentence
+      ? `你是英语教师助手，用户正在学习英语字幕。当前选中的句子是："${contextSentence}"。请简洁回答用户的问题，用Markdown格式回复。`
+      : `你是英语教师助手，用户正在学习英语。请简洁回答用户的问题，用Markdown格式回复。`;
+
+    let response = null;
+    let lastError = null;
+
+    for (const config of configs) {
+      if (!config.apiKey || !config.baseUrl) continue;
+      try {
+        const resp = await fetch(config.baseUrl + '/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + config.apiKey
+          },
+          body: JSON.stringify({
+            model: config.model,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userQuestion }
+            ],
+            temperature: 0.5
+          }),
+          signal: AbortSignal.timeout(120000)
+        });
+
+        if (!resp.ok) {
+          const errText = await resp.text().catch(() => '');
+          lastError = `API 请求失败 (${resp.status})`;
+          if (resp.status === 503 || resp.status === 429) continue;
+          break;
+        }
+
+        const data = await resp.json();
+        const content = data.choices?.[0]?.message?.content || '';
+        response = content;
+        break;
+      } catch (e) {
+        if (e.name === 'TimeoutError') {
+          lastError = 'AI 请求超时';
+        } else {
+          lastError = e.message;
+        }
+        continue;
+      }
+    }
+
+    removeChatMessage(loadingId);
+
+    if (response) {
+      appendChatMessage('ai', 'markdown', response);
+    } else {
+      appendChatMessage('ai', 'text', '⚠️ AI 回复失败: ' + escapeHtml(lastError || '未知错误'));
+    }
+  } catch (e) {
+    removeChatMessage(loadingId);
+    appendChatMessage('ai', 'text', '⚠️ AI 请求失败: ' + escapeHtml(e.message));
+  }
+
+  chatAIThinking = false;
+  updateSendBtnState();
+  scrollChatToBottom();
+}
+
+// 消息ID计数器
+let chatMsgIdCounter = 0;
+
+// 添加聊天消息，返回消息ID
+function appendChatMessage(role, type, content) {
+  const container = document.getElementById('chat-messages');
+  if (!container) return null;
+
+  const msgId = 'chat-msg-' + (++chatMsgIdCounter);
+  const div = document.createElement('div');
+  div.className = 'chat-msg ' + role;
+  div.id = msgId;
+
+  if (type === 'loading') {
+    div.innerHTML = `<div class="chat-bubble ai"><div class="chat-loading-dots"><span></span><span></span><span></span></div></div>`;
+  } else if (type === 'text') {
+    div.innerHTML = `<div class="chat-bubble ${role}">${escapeHtml(content)}</div>`;
+  } else if (type === 'markdown') {
+    div.innerHTML = `<div class="chat-bubble ${role}"><div class="ai-md-content">${renderMD(content)}</div></div>`;
+  } else if (type === 'analysis') {
+    const { sentence, data } = content;
+    const analysisHTML = renderAIExplanation(sentence, data);
+    div.innerHTML = `<div class="chat-bubble ${role}">${analysisHTML}</div>`;
+  }
+
+  container.appendChild(div);
+  scrollChatToBottom();
+  return msgId;
+}
+
+// 移除聊天消息
+function removeChatMessage(msgId) {
+  if (!msgId) return;
+  const el = document.getElementById(msgId);
+  if (el) el.remove();
+}
+
+// 滚动到底部
+function scrollChatToBottom() {
+  const container = document.getElementById('chat-messages');
+  if (container) {
+    container.scrollTop = container.scrollHeight;
+  }
+}
+
+// 更新发送按钮状态
+function updateSendBtnState() {
+  const btn = document.getElementById('chat-send-btn');
+  if (btn) {
+    btn.disabled = chatAIThinking;
+    btn.textContent = chatAIThinking ? '...' : '发送';
+  }
+}
+
+// 清空聊天
+function clearChat() {
+  const container = document.getElementById('chat-messages');
+  if (container) {
+    container.innerHTML = `
+      <div class="chat-msg ai">
+        <div class="chat-bubble ai">
+          <div class="ai-md-content">👋 你好！我是你的英语学习助手。<br><br>点击左侧字幕选择一个句子，然后在下方输入框提问。<br>你也可以点击「🔍 解析此句」快速获取句子的深度解析。</div>
+        </div>
+      </div>
+    `;
+  }
+  chatMessages = [];
+  chatAIThinking = false;
+  updateSendBtnState();
+
+  // 重置上下文栏
+  const bar = document.getElementById('chat-context-bar');
+  if (bar) {
+    bar.innerHTML = `<div class="ctx-empty">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 01.778-.332 48.294 48.294 0 005.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z"/>
+      </svg>
+      <span>点击左侧字幕选择句子作为上下文</span>
+    </div>`;
+  }
+}
+
 
 // =====================================================================
 // 内置迷你词典：常见词 → { lemma, pos, zh }
@@ -3156,6 +3687,9 @@ function showMainPage() {
   // 渲染字幕列表
   renderSubtitleList();
 
+  // 清空聊天面板
+  clearChat();
+
   // 尝试加载同目录下的 ai_explanations.json
   aiPreloadPromise = loadAIExplanationsFile();
 }
@@ -3248,28 +3782,31 @@ async function selectSubtitle(idx) {
   });
 
   const sub = subtitles[idx];
-  const placeholder = document.getElementById('analysis-placeholder');
-  const content = document.getElementById('analysis-content');
-  placeholder.classList.add('hidden');
-  content.classList.remove('hidden');
+  if (!sub) return;
 
-  // 显示加载状态
-  content.innerHTML = '<div class="flex items-center justify-center h-full"><p class="loading-pulse" style="color:var(--text-muted)">分析中...</p></div>';
+  // 更新右侧聊天面板的上下文栏
+  updateChatContextBar(sub);
 
-  // 异步分析
-  const wordAnalysis = await analyzeWords(sub.text);
-  // analyzeGrammar 保留但不再在渲染中调用（语法分析区域已移除）
-  const grammarResult = null;
+  // 异步分析单词（在后台缓存，供点击单词时使用）
+  analyzeWordsInBackground(sub.text);
 
+  // 更新收藏图标
+  updateFavIcon();
+
+  // 更新笔记按钮状态
+  updateNoteBtnState(idx);
+}
+
+// 在后台分析单词（不阻塞UI）
+async function analyzeWordsInBackground(sentence) {
+  const wordAnalysis = await analyzeWords(sentence);
   // 异步获取词典定义
   await fetchMissingDefinitions(wordAnalysis);
-
-  // 合并词典结果到词分析
+  // 合并词典结果
   for (const w of wordAnalysis) {
     if (w.isPunct || w.dictFetched) continue;
     const cached = dictCache[w.lemma.toLowerCase()];
     if (cached && cached.found) {
-      // 如果词典返回了更准确的词性，用词典的
       if (cached.pos && cached.pos !== 'other') {
         w.pos = cached.pos;
       }
@@ -3279,117 +3816,19 @@ async function selectSubtitle(idx) {
     }
     w.dictFetched = true;
   }
-
-  // 用有道词典补充中文释义（不再用英文定义代替中文）
+  // 用有道词典补充中文释义
   await fetchMissingChinese(wordAnalysis);
-
-  // 渲染分析面板
-  renderAnalysis(sub, wordAnalysis, grammarResult);
-  updateFavIcon();
-
-  // 异步加载 AI 解释（不阻塞主渲染）
-  loadAIExplanation(sub.text);
+  // 如果上下文栏还在显示这个句子，更新它以显示词性着色
+  if (currentIdx >= 0 && subtitles[currentIdx] && subtitles[currentIdx].text === sentence) {
+    updateChatContextBar(subtitles[currentIdx]);
+  }
 }
 
 // =====================================================================
-// 渲染分析面板
+// 渲染分析面板（聊天模式下不再使用，保留空函数以防外部调用）
 // =====================================================================
 function renderAnalysis(sub, wordAnalysis, grammar) {
-  const content = document.getElementById('analysis-content');
-  const tokens = tokenize(sub.text);
-
-  // ===== 原文展示（带词性颜色） =====
-  let originalHTML = '';
-  let wordIdx = 0;
-  for (const w of wordAnalysis) {
-    if (w.isPunct) {
-      originalHTML += `<span style="color:var(--text-muted)">${escapeHtml(w.original)}</span>`;
-    } else {
-      const cls = posClass(w.pos);
-      const color = posColor(w.pos);
-      originalHTML += `<span class="${cls} cursor-pointer hover:opacity-80 transition-opacity" data-word-idx="${wordIdx}" onclick="showWordDetail(${wordIdx}, event)">${escapeHtml(w.original)}</span> `;
-      wordIdx++;
-    }
-  }
-
-  // ===== 逐词分析表 =====
-  let wordsHTML = '<div class="mt-6"><h4 class="text-sm font-semibold mb-3" style="color:var(--text-secondary)">🔤 逐词分析</h4>';
-  wordsHTML += '<div class="grid gap-2" style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr))">';
-
-  let wordCounter = 0;
-  for (const w of wordAnalysis) {
-    if (w.isPunct) continue;
-    const color = posColor(w.pos);
-    const enDef = w.def || (w.definitions && w.definitions.length > 0 ? w.definitions[0].definition : '');
-    wordsHTML += `
-      <div class="rounded-lg p-3 cursor-pointer hover:opacity-90 transition-opacity" 
-           style="background:var(--bg-secondary);border:1px solid var(--border)"
-           onclick="showWordDetail(${wordCounter}, event)">
-        <div class="flex items-center justify-between mb-1">
-          <span class="text-sm font-medium" style="color:var(--text-primary)">${escapeHtml(w.original)}</span>
-          <span class="tag" style="background:${color}22;color:${color}">${posZh(w.pos)}</span>
-        </div>
-        <div class="text-xs" style="color:var(--text-muted)">原形: ${escapeHtml(w.lemma)}</div>
-        <div class="text-sm mt-1 font-semibold" style="color:var(--accent)">${escapeHtml(w.zh || '—')}</div>
-        ${enDef ? `<div class="text-xs mt-0.5" style="color:var(--text-muted)">${escapeHtml(enDef)}</div>` : ''}
-      </div>
-    `;
-    wordCounter++;
-  }
-  wordsHTML += '</div></div>';
-
-  // 词性图例
-  const posLegendHTML = `
-    <div class="flex flex-wrap gap-3 text-xs" style="color:var(--text-muted)">
-      <span class="flex items-center gap-1"><span style="color:var(--noun)">●</span> 名词</span>
-      <span class="flex items-center gap-1"><span style="color:var(--verb)">●</span> 动词</span>
-      <span class="flex items-center gap-1"><span style="color:var(--adj)">●</span> 形容词</span>
-      <span class="flex items-center gap-1"><span style="color:var(--adv)">●</span> 副词</span>
-      <span class="flex items-center gap-1"><span style="color:var(--prep)">●</span> 介词</span>
-      <span class="flex items-center gap-1"><span style="color:var(--other)">●</span> 其他</span>
-    </div>
-  `;
-
-  content.innerHTML = `
-    <div class="fade-in max-w-3xl">
-      <!-- 时间轴 + 收藏 + 笔记 -->
-      <div class="flex items-center gap-3 mb-4">
-        <span class="text-xs font-mono px-2 py-1 rounded" style="background:var(--bg-tertiary);color:var(--accent)">#${sub.index}</span>
-        <span class="text-xs" style="color:var(--text-muted)">${sub.time}</span>
-        <button id="note-btn" class="note-btn${hasNote(currentIdx) ? ' has-note' : ''}" onclick="toggleNote(${currentIdx})" title="${hasNote(currentIdx) ? '编辑笔记' : '添加笔记'}">📝</button>
-        <button id="btn-favorite" onclick="toggleFavorite()" class="ml-auto p-1 rounded-lg transition-colors" title="收藏此句"
-          style="color:var(--text-muted)"
-          onmouseover="this.style.background='var(--bg-hover)'"
-          onmouseout="this.style.background='transparent'">
-          <svg class="w-5 h-5" id="fav-icon" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke="currentColor">
-            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-          </svg>
-        </button>
-      </div>
-
-      <!-- 原文（词性着色） -->
-      <div class="mb-4">
-        <h4 class="text-sm font-semibold mb-2" style="color:var(--text-secondary)">📝 原文</h4>
-        <div class="text-lg leading-relaxed">${originalHTML}</div>
-        <div class="mt-2">${posLegendHTML}</div>
-      </div>
-
-      <!-- 逐词分析 -->
-      ${wordsHTML}
-
-      <!-- 笔记容器 -->
-      <div id="note-container"></div>
-
-      <!-- AI 解释与扩展容器 -->
-      <div id="ai-explanation-container"></div>
-    </div>
-  `;
-
-  // 滚动到顶部
-  content.scrollTop = 0;
-
-  // 渲染笔记显示（如果有）
-  renderNoteDisplay(currentIdx);
+  // No-op: 右侧已改为聊天面板，分析内容通过聊天消息展示
 }
 
 function getGramRoleName(cls) {
@@ -3556,10 +3995,10 @@ function resetApp() {
   document.getElementById('stats').classList.add('hidden');
   document.getElementById('btn-export').classList.add('hidden');
   document.getElementById('file-selector').classList.add('hidden');
-  document.getElementById('analysis-placeholder').classList.remove('hidden');
-  document.getElementById('analysis-content').classList.add('hidden');
+  clearChat();
   document.getElementById('subtitle-list').innerHTML = '';
-  document.getElementById('search-input').value = '';
+  const si = document.getElementById('search-input');
+  if (si) si.value = '';
   fileInput.value = '';
   // 刷新上传页的历史列表
   renderFileHistory();
@@ -3579,7 +4018,7 @@ function escapeHtml(str) {
 // =====================================================================
 document.addEventListener('keydown', e => {
   if (subtitles.length === 0) return;
-  if (e.target.tagName === 'INPUT') return;
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
   if (e.key === 'ArrowDown' && currentIdx < subtitles.length - 1) {
     e.preventDefault();
