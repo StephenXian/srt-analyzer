@@ -1523,50 +1523,33 @@ async function callAIAPIWithConfig(config, sentence, signal) {
     return { error: '配置不完整' };
   }
 
-  const prompt = `你是一位资深的英语教师，正在帮中国学生深度理解一句英语。请像老师讲解一样，逐层拆解这句话，返回 JSON 格式。
+  const prompt = `简明拆解这句英语，返回 JSON。
 
 句子：${sentence}
 
-请返回以下 JSON 结构（不要加 markdown 代码块标记，直接返回纯 JSON）：
+返回结构（纯 JSON，不要 markdown 代码块）：
 {
-  "translation": "简短自然的中文翻译",
-  "literalTranslation": "字面翻译（逐词直译）",
-  "actualMeanings": ["实际意思1（口语化）", "实际意思2", "实际意思3"],
-  "expressionNote": "关于这个表达是否为固定搭配/习语的说明",
+  "translation": "自然中文翻译",
+  "literalTranslation": "逐词直译",
+  "actualMeanings": ["口语化意思1", "意思2"],
+  "expressionNote": "固定搭配/习语说明（如无则为空字符串）",
   "sections": [
     {
-      "title": "一、句子结构分析",
-      "markdown": "逐词拆解表格 + 主语/谓语/否定/介词短语的分别讲解。使用 markdown 格式，支持：表格(|col|col|)、加粗(**text**)、列表(- item)、分隔线(---)"
+      "title": "结构与搭配",
+      "markdown": "简要拆解句子结构，重点讲固定搭配和易混淆用法（用✅❌对比）。控制在3-5行。"
     },
     {
-      "title": "二、固定搭配辨析",
-      "markdown": "对比容易混淆的搭配（如 ask vs ask for），用 ❌ 和 ✅ 标注错误和正确用法，解释为什么"
+      "title": "语感与深层含义",
+      "markdown": "母语者什么场景说、类似什么中文表达、1-2个变体。如有商务/政治潜台词简要点出。控制在3-5行。"
     },
     {
-      "title": "三、时态分析",
-      "markdown": "解释为什么用这个时态，对比如果换用其他时态含义会有什么变化"
-    },
-    {
-      "title": "四、母语者语感",
-      "markdown": "英语母语者在什么场景下说这句话，类似中文的什么表达，给出2-3个变体用法"
-    },
-    {
-      "title": "五、深层理解",
-      "markdown": "这句话在政治剧/商务谈判等具体语境中的潜台词和言外之意"
-    },
-    {
-      "title": "六、语法知识点总结",
-      "markdown": "编号列出本句包含的核心语法知识点，每个知识点给出公式和2-3个举一反三的例句"
+      "title": "核心知识点",
+      "markdown": "列出2-3个本句知识点，每个给公式+1个例句。用编号列表。"
     }
   ]
 }
 
-要求：
-- actualMeanings 至少给2-3个口语化的翻译，让中国学生真正理解语感
-- 每个section的markdown内容要详细、有深度，像老师讲课一样娓娓道来
-- 不要泛泛而谈，要针对这句话的具体词汇和结构来讲解
-- 对比分析很重要：要讲"为什么用A而不用B"，这种辨析对中国学生最有帮助
-- 如果句子有文化背景或政治/商务语境，一定要在"深层理解"中展开`;
+要求：每个section的markdown控制在3-5行以内，简洁直接，不啰嗦。`;
 
   try {
     // 如果没有传 signal，使用默认 120 秒超时
@@ -1581,7 +1564,7 @@ async function callAIAPIWithConfig(config, sentence, signal) {
       body: JSON.stringify({
         model: config.model,
         messages: [
-          { role: 'system', content: '你是一位资深的英语教师，擅长用中文逐层拆解英语句子，帮助学生深入理解语法、搭配、语感和文化背景。请始终返回合法的 JSON 格式。' },
+          { role: 'system', content: '你是英语教师，用中文简明拆解英语句子。输出精炼，每个要点3-5行以内。始终返回合法JSON。' },
           { role: 'user', content: prompt }
         ],
         temperature: 0.3
