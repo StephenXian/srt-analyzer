@@ -1710,7 +1710,7 @@ async function callAIAPIWithConfig(config, sentence, signal) {
     return { error: '配置不完整' };
   }
 
-  const prompt = `简明拆解这句英语，返回 JSON。
+  const prompt = `分析这句英语的固定搭配，返回 JSON。
 
 句子：${sentence}
 
@@ -1719,24 +1719,24 @@ async function callAIAPIWithConfig(config, sentence, signal) {
   "translation": "自然中文翻译",
   "literalTranslation": "逐词直译",
   "actualMeanings": ["口语化意思1", "意思2"],
-  "expressionNote": "固定搭配/习语说明（如无则为空字符串）",
+  "expressionNote": "固定搭配说明",
   "sections": [
     {
-      "title": "结构与搭配",
-      "markdown": "简要拆解句子结构，重点讲固定搭配和易混淆用法（用✅❌对比）。控制在3-5行。"
+      "title": "固定搭配",
+      "markdown": "列出句中所有固定搭配，每个搭配解释：1)含义 2)为什么这样搭配 3)造一个短例句。格式：- **搭配**：解释 + 例句"
     },
     {
-      "title": "语感与深层含义",
-      "markdown": "母语者什么场景说、类似什么中文表达、1-2个变体。如有商务/政治潜台词简要点出。控制在3-5行。"
+      "title": "易混淆辨析",
+      "markdown": "对比1-2个容易写错/用错的搭配（用✅❌），简短说明区别"
     },
     {
-      "title": "核心知识点",
-      "markdown": "列出2-3个本句知识点，每个给公式+1个例句。用编号列表。"
+      "title": "语法要点",
+      "markdown": "用1-2句话点出核心语法点，不展开，给1个例句"
     }
   ]
 }
 
-要求：每个section的markdown控制在3-5行以内，简洁直接，不啰嗦。`;
+要求：每个section控制在3行以内，直接给结论，不要铺垫。`;
 
   try {
     // 如果没有传 signal，使用默认 120 秒超时
@@ -2334,8 +2334,8 @@ async function requestAIChat(userQuestion, contextSentence) {
 
     const configs = getAISettings();
     const systemPrompt = contextSentence
-      ? `你是英语教师助手，用户正在学习英语字幕。当前选中的句子是："${contextSentence}"。请简洁回答用户的问题，用Markdown格式回复。`
-      : `你是英语教师助手，用户正在学习英语。请简洁回答用户的问题，用Markdown格式回复。`;
+      ? `你是英语教师助手，用户正在学习英语字幕。当前选中的句子是："${contextSentence}"。请简洁回答，重点解释固定搭配和用法辨析。用Markdown格式回复。`
+      : `你是英语教师助手，用户正在学习英语。请简洁回答，重点解释固定搭配和用法辨析。用Markdown格式回复。`;
 
     let response = null;
     let lastError = null;
@@ -3741,6 +3741,9 @@ async function selectSubtitle(idx) {
 
   // 更新右侧句子信息面板
   updateSentenceInfoPanel(sub);
+
+  // 切换句子时清空聊天面板
+  clearChat();
 
   // 异步分析单词（在后台缓存，供点击单词时使用）
   analyzeWordsInBackground(sub.text);
