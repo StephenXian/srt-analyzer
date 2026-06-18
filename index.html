@@ -2267,7 +2267,7 @@ async function sendChatMessage() {
   await requestAIChat(text, currentSentence);
 }
 
-// 请求AI分析（JSON格式，深度拆解）
+// 请求AI分析（JSON格式，深度拆解）— 始终调API用新prompt，不使用旧缓存
 async function requestAIAnalysis(sentence) {
   chatAIThinking = true;
   updateSendBtnState();
@@ -2276,14 +2276,8 @@ async function requestAIAnalysis(sentence) {
   const loadingId = appendChatMessage('ai', 'loading', '');
 
   try {
-    // 等待预生成数据
-    if (aiPreloadPromise) await aiPreloadPromise;
-
-    // 检查缓存
     let result;
-    if (aiExplanationCache[sentence]) {
-      result = aiExplanationCache[sentence];
-    } else if (isAIConfigured()) {
+    if (isAIConfigured()) {
       result = await callAIAPIWithFallback(sentence);
       if (!result.error) aiExplanationCache[sentence] = result;
     } else {
